@@ -1,9 +1,6 @@
 [submodule "3rdParty/node"]
 	path = 3rdParty/node
 	url = git://github.com/joyent/node.git
-[submodule "node/node_modules/helenus"]
-	path = node/node_modules/helenus
-	url = git://github.com/simplereach/helenus.git
 [submodule "node/node_modules/uglify-js"]
 	path = node/node_modules/uglify-js
 	url = git://github.com/driverdan/node-XMLHttpRequest.git
@@ -13,3 +10,12 @@
 [submodule "node/node_modules/socket.io"]
 	path = node/node_modules/socket.io
 	url = git://github.com/LearnBoost/socket.io.git
+[submodule "node/node_modules/node-uuid"]
+	path = node/node_modules/node-uuid
+	url = git://github.com/broofa/node-uuid.git
+[submodule "node/node_modules/cassandra-client"]
+	path = node/node_modules/cassandra-client
+	url = https://github.com/racker/node-cassandra-client.git
+[submodule "node/node_modules/async"]
+	path = node/node_modules/async
+	url = git://github.com/caolan/async.git
