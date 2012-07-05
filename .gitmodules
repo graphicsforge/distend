@@ -19,3 +19,6 @@
 [submodule "node/node_modules/async"]
 	path = node/node_modules/async
 	url = git://github.com/caolan/async.git
+[submodule "node/node_modules/uuid-js"]
+	path = node/node_modules/uuid-js
+	url = git://github.com/pnegri/uuid-js.git
