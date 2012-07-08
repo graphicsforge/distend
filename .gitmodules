@@ -22,3 +22,21 @@
 [submodule "node/node_modules/uuid-js"]
 	path = node/node_modules/uuid-js
 	url = git://github.com/pnegri/uuid-js.git
+[submodule "node/node_modules/policyfile"]
+	path = node/node_modules/policyfile
+	url = git://github.com/3rd-Eden/FlashPolicyFileServer.git
+[submodule "node/node_modules/active-x-obfuscator"]
+	path = node/node_modules/active-x-obfuscator
+	url = git://github.com/felixge/node-active-x-obfuscator.git
+[submodule "node/node_modules/zeparser"]
+	path = node/node_modules/zeparser
+	url = git://github.com/qfox/ZeParser.git
+[submodule "node/node_modules/colors"]
+	path = node/node_modules/colors
+	url = git://github.com/Marak/colors.js.git
+[submodule "node/node_modules/node-http-proxy"]
+	path = node/node_modules/node-http-proxy
+	url = git://github.com/nodejitsu/node-http-proxy.git
+[submodule "node/node_modules/pkginfo"]
+	path = node/node_modules/pkginfo
+	url = git://github.com/indexzero/node-pkginfo.git

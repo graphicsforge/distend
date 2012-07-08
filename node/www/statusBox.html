@@ -1,0 +1,81 @@
+<script>
+
+var statusBox = new StatusBox();
+function StatusBox()
+{
+  this.statusBox_users=[];
+  if ( !this.statusBox_users.indexOf )
+  {
+    this.statusBox_users.indexOf = function(obj) {
+      for ( var i=0; i<this.length; i++ )
+      {
+        if ( this[i]===obj )
+          return i;
+      }
+      return -1;
+    }
+  }
+}
+
+socketIOManager.modulesRegistered.push(statusBox);
+StatusBox.prototype.onConnect = function()
+{
+  sendMessage ("/join statusBox\n");
+  sendMessage ("/request\tstatusBox\n");
+  this.updateOutputBox();
+}
+
+StatusBox.prototype.onMessage = function( data, type, target )
+{
+  if ( target!="statusBox" )
+    return;
+  if ( type=="response" )
+  {
+    this.statusBox_users.length = 0;
+    var parts = data.split(' ');
+    for ( var i=0; i<parts.length; i++ )
+      this.statusBox_users[i] = parts[i].replace(/^FB_/,'');
+  }
+  else if ( type=="add")
+  {
+    this.statusBox_users[this.statusBox_users.length] = data.replace(/^FB_/,'');
+  }
+  else if ( type=="remove" )
+  {
+    this.statusBox_users.splice( this.statusBox_users.indexOf(data.replace(/^FB_/,'')), 1 );
+  }
+  else if ( type=="rename" )
+  {
+    var parts = data.split(' ');
+    if ( parts.length>=2 )
+    {
+      if ( this.statusBox_users.indexOf(parts[0].replace(/^FB_/,''))!=-1 )
+        this.statusBox_users.splice( this.statusBox_users.indexOf(parts[0].replace(/^FB_/,'')), 1, parts[1].replace(/^FB_/,'') );
+      else
+        this.statusBox_users[this.statusBox_users.length] = parts[1].replace(/^FB_/,'');
+    }
+    else if ( parts.length==1 )
+      this.statusBox_users[this.statusBox_users.length] = data.replace(/^FB_/,'');
+  }
+  this.updateOutputBox();
+}
+
+StatusBox.prototype.updateOutputBox = function (){
+  document.getElementById ("statusBox_output").innerHTML="Connected users: ";
+  for (var item in this.statusBox_users){           
+    if ( typeof(this.statusBox_users[item])!="function" )
+    document.getElementById ("statusBox_output").innerHTML+="<span style='margin-left:10px'>"+this.statusBox_users[item]+"</span>";
+  }
+  // tell other things to resize around me
+  if ( eval("typeof onResize_gallery_highlight == 'function'" ) )
+    onResize_gallery_highlight();
+  if ( eval("typeof onResize_chat == 'function'" ) )
+    onResize_chat();
+  if ( eval("typeof onResize_render == 'function'" ) )
+    onResize_render();
+}
+</script>
+
+
+<div style="border: black solid 2px; font-size:12px; color:#000000" id="statusBox_output"></div>
+

@@ -1,0 +1,224 @@
+<style type="text/css">
+  input {
+    background-image:url("header_bg.jpg");
+    border: 1px solid #ffffff;
+    color:#ffffff;
+  }
+  input[type="text"], input[type="password"] {
+    border-left: 10px solid #ffffff;
+  }
+  input[type="submit"] {
+    border: 2px solid #ffffff;
+  }
+  input[type="text"]:focus, input[type="password"]:focus, input[type="submit"]:hover, input[type="submit"]:hover {
+    border-color: #520205;
+  }
+  a { 
+    color: #ffffff;
+  }
+  a:hover, a:active { 
+    color: #520205;
+  }
+
+  div#header_menubar {
+    background-image:url("header_bg.jpg");
+    float:left;
+    width:100%;
+    border-top: 2px solid #520205;
+    border-bottom: 2px solid #520205;
+    font-family: Trebuchet MS;
+  }
+  div#header_menubar > div {
+    background-color:transparent;
+    float:left;
+    -webkit-transition: all .5s ease;
+    -moz-transition: all .5s ease;
+    -o-transition: all .5s ease;
+    -ms-transition: all .5s ease;
+    transition: all .5s ease;
+  }
+  div#header_menubar > div > a {
+    margin-left: 10px;
+    margin-right: 10px;
+    color:#ffffff;
+  }
+  div#header_menubar > div:hover > a {
+    color:#ffffff;
+  }
+
+  div#header_menubar > div:hover {
+    background-color:#520205;
+    color:#13197a;
+  }
+
+  div#register.hidden, form#header_login_form.hidden {
+      width: 0px;
+      height: 0px;
+      opacity: 0;
+      overflow: hidden;
+  }
+
+  div#register {
+      opacity: 1;
+      -webkit-transition: all 2s ease;
+      -moz-transition: all 2s ease;
+      -o-transition: all 2s ease;
+      -ms-transition: all 2s ease;
+      transition: all 2s ease;
+  }
+
+</style>
+
+<script src='user.js'></script>
+<script>
+
+var user = new User();  // userinfo object
+
+function Header()
+{
+}
+var header = new Header();
+ui.modulesRegistered.push(header);
+socketIOManager.modulesRegistered.push(header);
+Header.prototype.onConnect = function(){
+  // if we already got login params, resend them
+  if ( user.signedIn && user.username!=undefined )
+    sendMessage ("/request\theader\tgeneric\t"+user.password+"\t"+user.username+"\n");
+  header.onResize();
+  header.getUserStatus();
+}
+
+Header.prototype.onResize = function (){
+  var contentFrame = document.getElementById('content_iframe');
+  try {
+    contentFrame.style.height = (window.innerHeight-document.getElementById('header_div').offsetHeight-25)+"px";
+  } catch(e) {
+// alert('IE')
+    var newHeight = document.body.clientHeight-300;
+    if ( newHeight<0 )
+      newHeight = 0;
+    document.all("content_iframe").style.height = newHeight+" px";//window.innerHeight-document.getElementById('header_div').offsetHeight-100+"px";
+  }
+
+  if( window.frames.length )
+  {
+//    if ( typeof document.getElementById('content_iframe').contentWindow.ui.onResize == 'function' )
+    if ( typeof document.getElementById('content_iframe').contentWindow.ui != 'undefined' )
+      document.getElementById('content_iframe').contentWindow.ui.onResize();
+  }
+}
+
+Header.prototype.onMessage = function( data, type, target )
+{
+  if ( target!="header" )
+    return;
+  if ( type=="response" )
+  {
+    if ( data=="fail" )
+    {
+      if ( document.getElementById('header_login_response')!=null )
+        document.getElementById('header_login_response').innerHTML="Would you like to <a href='#' onclick='header_showRequestInviteForm()'>register</a> or did you <a href='#'>forget your password</a>";  return;
+    }
+    else
+    {
+      user.init(eval(data)[0]);
+      document.getElementById('header_login').innerHTML = "Welcome back, <a href='#'>"+user.username.replace(/^FB_/,'')+"</a><br><a href='#' onclick=\"if(typeof(header.FB_uid)!='undefined'){FB.logout(function(response){location.reload(true);});} else {location.reload(true);}\">logout</a>";
+    }
+  }
+}
+
+function header_showRequestInviteForm ()
+{
+  document.getElementById('register').innerHTML = ""+
+        "Please enter your email address; I will send you an invite as soon as I can<br>"+
+        "email<input id=\"header_register_email\" name=\"header_register_email\" type=\"text\"></input>"+
+        " <input type='submit' value=\"request invite\" onclick=\"header_submitInviteRequest(document.getElementById('header_register_email').value);\"></input>";
+  document.getElementById('register').setAttribute('class', '');
+  document.getElementById('header_login_form').setAttribute('class', 'hidden');
+  document.getElementById('header_login_response').innerHTML="";
+}
+function header_submitInviteRequest ( email )
+{
+  document.getElementById('register').setAttribute('class', 'hidden');
+  document.getElementById('header_login_form').setAttribute('class', '');
+  sendMessage('/request\tregistration\t'+email);
+  document.getElementById('header_login_response').innerHTML="Hopefully, we will be set up for you, and you will recieve and e-mail shortly!<br>If you do not hear back within 24 hours, please try <a href='#' onclick='header_showRequestInviteForm()'>again</a> or login via facebook";
+}
+
+function header_submitLogin ( username, password )
+{
+  if ( !username.length )
+  {
+    document.getElementById('header_login_response').innerHTML="Please enter your name!";  return;
+  }
+  if ( !password.length )
+  {
+    document.getElementById('header_login_response').innerHTML="Please enter your password!";  return;
+  }
+  user.password = password;
+  sendMessage ("/request\theader\tgeneric\t"+password+"\t"+username+"\n");
+}
+
+Header.prototype.getUserStatus = function()
+{
+  if ( typeof(FB)!='undefined' )
+  {
+    var self = this;
+    FB.getLoginStatus(function(response) {
+      if (response.status === 'connected') {
+        self.FB_uid = response.authResponse.userID;
+        self.FB_accessToken = response.authResponse.accessToken;
+        // do the server login
+        FB.api('/me', function(response) {
+          sendMessage('/request\theader\tFB\t'+response.username+'\thttp://graph.facebook.com/'+response.username+'/picture\t'+response.email+'\t'+response.first_name+'\t'+response.middle_name+'\t'+response.last_name+'\n');
+        });
+        // hide any login stuff
+        if ( document.getElementById('fb-login-button')!=undefined )
+          document.getElementById('fb-login-button').style.display="none";
+      }
+      else
+        document.getElementById('fb-login-button').style.display="inline";
+    });
+
+  }
+}
+
+window.fbAsyncInit = function() {
+  FB.init({
+    appId      : '212105135556392',
+    status     : true, 
+    cookie     : true,
+    xfbml      : true,
+    oauth      : true,
+  });
+
+  FB.Event.subscribe('auth.login', function(response) {
+    header.getUserStatus();
+  });
+  header.getUserStatus();
+};
+(function(d){
+   var js, id = 'facebook-jssdk'; if (d.getElementById(id)) {return;}
+   js = d.createElement('script'); js.id = id; js.async = true;
+   js.src = "//connect.facebook.net/en_US/all.js";
+   d.getElementsByTagName('head')[0].appendChild(js);
+ }(document));
+
+  <div id='header_div' style="color:#ffffff;float:left;width:100%;font-size:12px;background:url(header_bg.jpg) top left repeat">
+<div id='debug'></div>
+    <img src="logo.png" style="float:left" />
+    <div id='header_login' style="float:right;text-align:right;margin-top:45px;">
+      <!-- request invite -->
+      <div id='register' onsubmit="return false;" class="hidden">
+      </div>
+
+      <!-- login -->
+      <form id="header_login_form" action="" onsubmit="header_submitLogin(document.getElementById('header_login_name').value, document.getElementById('header_login_pass').value);return false;">
+        name<input id="header_login_name" name="header_login_name" type="text"></input>
+        password<input id="header_login_pass" name="header_login_pass" type="password"></input>
+        <input type='submit' value="sign in"></input>
+<div id='fb-login-button' class="fb-login-button" style='display:none'>or sign in with Facebook</div>
+      </form>
+      <span id='header_login_response' style="color:#ff0000"><span style="color:#ffffff">Not a member yet? <a href='#' onclick="header_showRequestInviteForm()">Request</a> an invitation now!</span></span>
+    </div>
+  </div>
