@@ -14,12 +14,12 @@ var    websocket = require('node-http-proxy/vendor/websocket'), // node-http-pro
     httpProxy = require('node-http-proxy/lib/node-http-proxy');
 
 
-//var db = require ("db.js");
+var db = require ("db.js");
 var chatserver = require ("chatserver.js");
 //var yahooSymbols = require ("yahooSymbols.js");
 
 var MSG_SERVER_PORT=8000;
-var HTTP_PORT=80;
+var HTTP_PORT=3000;
 var NODE_WWW_PATH="./www";
 chatserver.setPort(MSG_SERVER_PORT);
 chatserver.startServer();
@@ -56,39 +56,6 @@ function launchWebChatServer()
   // make a standard http server
   httpServer = httpProxy.createServer(function(req, res, proxy){
     // respond to web requests
-    if ( key=="statusBox" )
-    {
-      if ( type=="join" )
-        msgServerNotifier.write("/join statusBox\n");
-      else
-      {
-        var response=chatserver.getClientAliases();
-        webClient.emit('message', "/response\t"+key+"\t"+response);
-      }
-    }
-    else if ( key=="header" )
-    {
-      if ( args[0]=="FB" )
-      {
-        db.FBSignIn("FB_"+args[1], args[2], args[3], args[4], function(err, response, result){
-          if ( err )
-            webClient.emit('message', "/response\t"+key+"\tfail");
-          else
-          {
-            webClient.authenticatedUsername = result.rows[0]['usr_name'];
-            webClient.authenticatedId = result.rows[0]['usr_id'];
-            msgServerNotifier.write("/nick "+webClient.authenticatedUsername.replace(/ /g,"_")+"\n");
-            webClient.emit('message', "/response\t"+key+"\t"+response+"\n");
-            // send portfoliio stuff
-            db.queryWatchlist( webClient.authenticatedId, function(response){
-              if ( response.length>2 )
-                webClient.emit('message', "/response\twatchlist\t"+response);
-            });
-          }
-        });
-      }
-    }
- 
     if ( req.url=="/forum" )
     {
       res.writeHead(200, {'Content-Type': 'text/html'});
@@ -100,9 +67,9 @@ console.log(req.headers['user-agent']);
         output += "<script> var IEBrowser = true;  </script>\n";
       }
       output +=
-            fs.readFileSync(NODE_WWW_PATH+'/shaders.inc', 'utf8')+
-            fs.readFileSync(NODE_WWW_PATH+'/forum.html', 'utf8')+
-            fs.readFileSync(NODE_WWW_PATH+'/portfolio.html', 'utf8');
+//            fs.readFileSync(NODE_WWW_PATH+'/shaders.inc', 'utf8')+
+            fs.readFileSync(NODE_WWW_PATH+'/forum.html', 'utf8');
+//            fs.readFileSync(NODE_WWW_PATH+'/portfolio.html', 'utf8');
 //            fs.readFileSync(NODE_WWW_PATH+'/visualization.html', 'utf8');
       } catch ( error ) { console.log( error.toString() ) }
       res.end(output);
@@ -159,6 +126,34 @@ msgwebSocket.sockets.on('connection', function(webClient)
   });
   // handle webpage data requests
   var webClientRequestCallback = function(type, key, args) {
+    if ( key=="statusBox" )
+    {
+      if ( type=="join" )
+        msgServerNotifier.write("/join statusBox\n");
+      else
+      {
+        var response=chatserver.getClientAliases();
+        webClient.emit('message', "/response\t"+key+"\t"+response);
+      }
+    }
+    else if ( key=="header" )
+    {
+      if ( args[0]=="FB" )
+      {
+        db.FBSignIn("FB_"+args[1], args[2], args[3], args[4], function(err, response, result){
+          if ( err )
+            webClient.emit('message', "/response\t"+key+"\tfail");
+          else
+          {
+            webClient.authenticatedUsername = args[1];
+            msgServerNotifier.write("/nick "+webClient.authenticatedUsername.replace(/ /g,"_")+"\n");
+            webClient.emit('message', "/response\t"+key+"\t{\"username\":\""+webClient.authenticatedUsername+"\",\"img\":\""+args[2]+"\"}\n");
+          }
+        });
+      }
+    }
+ 
+
   }
   webClient.on('message', function(msg)
   {

@@ -11,21 +11,21 @@
     border: 2px solid #ffffff;
   }
   input[type="text"]:focus, input[type="password"]:focus, input[type="submit"]:hover, input[type="submit"]:hover {
-    border-color: #520205;
+    border-color: #777b86;
   }
   a { 
     color: #ffffff;
   }
   a:hover, a:active { 
-    color: #520205;
+    color: #777b86;
   }
 
   div#header_menubar {
     background-image:url("header_bg.jpg");
     float:left;
     width:100%;
-    border-top: 2px solid #520205;
-    border-bottom: 2px solid #520205;
+    border-top: 2px solid #777b86;
+    border-bottom: 2px solid #777b86;
     font-family: Trebuchet MS;
   }
   div#header_menubar > div {
@@ -47,7 +47,7 @@
   }
 
   div#header_menubar > div:hover {
-    background-color:#520205;
+    background-color:#777b86;
     color:#13197a;
   }
 
@@ -89,23 +89,6 @@ Header.prototype.onConnect = function(){
 }
 
 Header.prototype.onResize = function (){
-  var contentFrame = document.getElementById('content_iframe');
-  try {
-    contentFrame.style.height = (window.innerHeight-document.getElementById('header_div').offsetHeight-25)+"px";
-  } catch(e) {
-// alert('IE')
-    var newHeight = document.body.clientHeight-300;
-    if ( newHeight<0 )
-      newHeight = 0;
-    document.all("content_iframe").style.height = newHeight+" px";//window.innerHeight-document.getElementById('header_div').offsetHeight-100+"px";
-  }
-
-  if( window.frames.length )
-  {
-//    if ( typeof document.getElementById('content_iframe').contentWindow.ui.onResize == 'function' )
-    if ( typeof document.getElementById('content_iframe').contentWindow.ui != 'undefined' )
-      document.getElementById('content_iframe').contentWindow.ui.onResize();
-  }
 }
 
 Header.prototype.onMessage = function( data, type, target )
@@ -121,7 +104,7 @@ Header.prototype.onMessage = function( data, type, target )
     }
     else
     {
-      user.init(eval(data)[0]);
+      user.init(JSON.parse(data));
       document.getElementById('header_login').innerHTML = "Welcome back, <a href='#'>"+user.username.replace(/^FB_/,'')+"</a><br><a href='#' onclick=\"if(typeof(header.FB_uid)!='undefined'){FB.logout(function(response){location.reload(true);});} else {location.reload(true);}\">logout</a>";
     }
   }
@@ -195,7 +178,6 @@ window.fbAsyncInit = function() {
   FB.Event.subscribe('auth.login', function(response) {
     header.getUserStatus();
   });
-  header.getUserStatus();
 };
 (function(d){
    var js, id = 'facebook-jssdk'; if (d.getElementById(id)) {return;}
@@ -203,22 +185,18 @@ window.fbAsyncInit = function() {
    js.src = "//connect.facebook.net/en_US/all.js";
    d.getElementsByTagName('head')[0].appendChild(js);
  }(document));
+</script>
 
-  <div id='header_div' style="color:#ffffff;float:left;width:100%;font-size:12px;background:url(header_bg.jpg) top left repeat">
+<div id="fb-root"></div>
+
+  <div id='header_div' style="color:#ffffff;float:left;width:100%;font-size:12px;background-color:#777b86">
 <div id='debug'></div>
-    <img src="logo.png" style="float:left" />
     <div id='header_login' style="float:right;text-align:right;margin-top:45px;">
       <!-- request invite -->
       <div id='register' onsubmit="return false;" class="hidden">
       </div>
 
       <!-- login -->
-      <form id="header_login_form" action="" onsubmit="header_submitLogin(document.getElementById('header_login_name').value, document.getElementById('header_login_pass').value);return false;">
-        name<input id="header_login_name" name="header_login_name" type="text"></input>
-        password<input id="header_login_pass" name="header_login_pass" type="password"></input>
-        <input type='submit' value="sign in"></input>
-<div id='fb-login-button' class="fb-login-button" style='display:none'>or sign in with Facebook</div>
-      </form>
-      <span id='header_login_response' style="color:#ff0000"><span style="color:#ffffff">Not a member yet? <a href='#' onclick="header_showRequestInviteForm()">Request</a> an invitation now!</span></span>
+<div id='fb-login-button' class="fb-login-button" style='display:none'>sign in with Facebook</div>
     </div>
   </div>
