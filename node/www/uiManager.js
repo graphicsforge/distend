@@ -19,8 +19,8 @@
   //  ui inits
   function UIManager()
   {
-    this.modulesRegistered = [];
-    this.keyboard = [];
+    this.listeners = []; // hash by type of function arrays
+    this.keyboard = []; // keyboard state
     this.mouseButton = [false, false, false];
     this.mousePos = [0, 0];
     this.mousePrev = [0, 0];
@@ -28,15 +28,39 @@
     this.mouseLastClickTime = new Date();
   }
 
+  UIManager.prototype.addListener = function( eventType, functionPointer ) {
+    if ( typeof functionPointer != "function" )
+      return;
+    if ( this.listeners[eventType] == undefined )
+      this.listeners[eventType] = [];
+    this.listeners[eventType].push(functionPointer);
+  }
+  UIManager.prototype.removeListener = function( eventType, functionPointer ) {
+    if ( this.listeners[eventType] == undefined )
+      return;
+    for (var i=0; i<this.listeners[eventType].length; i++) {
+      if ( this.listeners[eventType][i] === functionPointer ) {
+        this.listeners[eventType].splice(i, 1);
+        i = i-1;
+      }
+    }
+  }
+  UIManager.prototype.invokeListeners = function( event ) {
+    if ( event.type == undefined )
+      return;
+    if ( this.listeners[event.type] == undefined )
+      return;
+    for (var i=0; i<this.listeners[event.type].length; i++)
+      try {
+        this.listeners[event.type][i]( event );
+      } catch ( error ) { alert( error.message ) }
+  }
+
   UIManager.prototype.mouseUp = function(event) {
     this.mouseButton[event.button] = false;
     this.mousePos[0] = event.clientX;
     this.mousePos[1] = event.clientY;
-    for ( var i=0; i<this.modulesRegistered.length; i++ )
-      if ( this.modulesRegistered[i]!=undefined && typeof(this.modulesRegistered[i].onMouseUp) == 'function' )
-        try {
-        this.modulesRegistered[i].onMouseUp(event);
-        } catch(err) { alert("error on modulesRegistered[i]"+this.modulesRegistered[i]+"_onMouseUp(event)"+err.name+": "+err.message); }
+    this.invokeListeners( event );
   }
 
   UIManager.prototype.mouseDown = function(event) {
@@ -44,11 +68,7 @@
     this.mousePos[0] = event.clientX;
     this.mousePos[1] = event.clientY;
     this.mouseDownPos = this.mousePos.slice();
-    for ( var i=0; i<this.modulesRegistered.length; i++ )
-      if ( this.modulesRegistered[i]!=undefined && typeof(this.modulesRegistered[i].onMouseUp) == 'function' )
-        try {
-        this.modulesRegistered[i].onMouseDown(event);
-        } catch(err) { alert("error on modulesRegistered[i]"+this.modulesRegistered[i]+"_onMouseDown(event)"+err.name+": "+err.message); }
+    this.invokeListeners( event );
     this.mouseLastClickTime = new Date();
   }
 
@@ -56,11 +76,7 @@
     this.mousePrev = this.mousePos.slice();
     this.mousePos[0] = event.clientX;
     this.mousePos[1] = event.clientY;
-    for ( var i=0; i<this.modulesRegistered.length; i++ )
-      if ( this.modulesRegistered[i]!=undefined && typeof(this.modulesRegistered[i].onMouseMove) == 'function' )
-//        try {
-        this.modulesRegistered[i].onMouseMove(event);
-//        } catch(err) { alert("error on modulesRegistered[i]"+this.modulesRegistered[i]+"_onMouseMove(event)"+err.name+": "+err.message); }
+    this.invokeListeners( event );
   }
 
   UIManager.prototype.keyUp = function(event) {
@@ -68,11 +84,7 @@
     // deal with combinations of shift+alt keys
     if ( event.which==224 )
       this.keyboard[18] = false;
-    for ( var i=0; i<this.modulesRegistered.length; i++ )
-      if ( this.modulesRegistered[i]!=undefined && typeof(this.modulesRegistered[i].onKeyUp) == 'function' )
-        try {
-        this.modulesRegistered[i].onKeyUp(event);
-        } catch(err) { alert("error on modulesRegistered[i]"+this.modulesRegistered[i]+"_onKeyUp(event)"+err.name+": "+err.message); }
+    this.invokeListeners( event );
   }
 
   UIManager.prototype.keyDown = function(event) {
@@ -80,23 +92,17 @@
     // deal with combinations of shift+alt keys
     if ( event.which==224 )
       this.keyboard[18] = true;
-    for ( var i=0; i<this.modulesRegistered.length; i++ )
-      if ( this.modulesRegistered[i]!=undefined && typeof(this.modulesRegistered[i].onKeyDown) == 'function' )
-        try {
-        this.modulesRegistered[i].onKeyDown(event);
-        } catch(err) { alert("error on modulesRegistered[i]"+this.modulesRegistered[i]+"_onKeyDown(event)"+err.name+": "+err.message); }
+    this.invokeListeners( event );
   }
 
-  UIManager.prototype.onResize = function()
+  UIManager.prototype.onResize = function(event)
   {
-    for ( var i=0; i<this.modulesRegistered.length; i++ )
-      if ( this.modulesRegistered[i]!=undefined && typeof(this.modulesRegistered[i].onResize) == 'function' )
-        this.modulesRegistered[i].onResize();
+    this.invokeListeners( event );
   }
  
-  UIManager.prototype.onLoad = function()
+  UIManager.prototype.onLoad = function(event)
   {
-    this.windowResize();
+    this.invokeListeners( event );
   }
 
 window.onkeydown=function(event){ui.keyDown(event);};
@@ -104,8 +110,8 @@ window.onkeyup=function(event){ui.keyUp(event);};
 window.onmousedown=function(event){ui.mouseDown(event);};
 window.onmouseup=function(event){ui.mouseUp(event);};
 window.onmousemove=function(event){ui.mouseMove(event);};
-window.onresize=function(){ui.onResize();};
-document.onload=function(){ui.onLoad();};
+window.onresize=function(event){ui.onResize(event);};
+document.onload=function(event){ui.onLoad(event);};
 
   function loadScript(filename, key, callback)
   {
