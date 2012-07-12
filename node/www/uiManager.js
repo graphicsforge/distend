@@ -1,41 +1,17 @@
 
-  // IE hacks
-/*  if ( !Array.prototype.indexOf )
-  {
-    Array.prototype.indexOf = function(obj)
-    {
-      for ( var i=0; i<this.length; i++ )
-      {
-        if ( this[i]===obj )
-          return i;
-      }
-      return -1;
-    }
-  }*/
-
   var supportedMobile=/(ipad|ipod|iphone|android)/i;
 
-  var ui = new UIManager();
-  //  ui inits
-  function UIManager()
-  {
+  function EventEmitter() {
     this.listeners = []; // hash by type of function arrays
-    this.keyboard = []; // keyboard state
-    this.mouseButton = [false, false, false];
-    this.mousePos = [0, 0];
-    this.mousePrev = [0, 0];
-    this.mouseDownPos = [0, 0];
-    this.mouseLastClickTime = new Date();
   }
-
-  UIManager.prototype.addListener = function( eventType, functionPointer ) {
+  EventEmitter.prototype.addListener = function( eventType, functionPointer ) {
     if ( typeof functionPointer != "function" )
       return;
     if ( this.listeners[eventType] == undefined )
       this.listeners[eventType] = [];
     this.listeners[eventType].push(functionPointer);
   }
-  UIManager.prototype.removeListener = function( eventType, functionPointer ) {
+  EventEmitter.prototype.removeListener = function( eventType, functionPointer ) {
     if ( this.listeners[eventType] == undefined )
       return;
     for (var i=0; i<this.listeners[eventType].length; i++) {
@@ -45,7 +21,16 @@
       }
     }
   }
-  UIManager.prototype.invokeListeners = function( event ) {
+  EventEmitter.prototype.emit = function( event, data ) {
+    if ( typeof( event ) == "string" ) {
+      if ( this.listeners[event] == undefined )
+        return;
+      for (var i=0; i<this.listeners[event].length; i++)
+        try {
+          this.listeners[event][i]( data );
+        } catch ( error ) { alert( error.message ) }
+      return;
+    }
     if ( event.type == undefined )
       return;
     if ( this.listeners[event.type] == undefined )
@@ -56,62 +41,71 @@
       } catch ( error ) { alert( error.message ) }
   }
 
+
+
+  UIManager.prototype = new EventEmitter;
+  UIManager.constructor = UIManager;
+  //  ui inits
+  function UIManager()
+  {
+    this.keyboard = []; // keyboard state
+    this.mouseButton = [false, false, false];
+    this.mousePos = [0, 0];
+    this.mousePrev = [0, 0];
+    this.mouseDownPos = [0, 0];
+    this.mouseLastClickTime = new Date();
+  }
   UIManager.prototype.mouseUp = function(event) {
     this.mouseButton[event.button] = false;
     this.mousePos[0] = event.clientX;
     this.mousePos[1] = event.clientY;
-    this.invokeListeners( event );
+    this.emit( event );
   }
-
   UIManager.prototype.mouseDown = function(event) {
     this.mouseButton[event.button] = true;
     this.mousePos[0] = event.clientX;
     this.mousePos[1] = event.clientY;
     this.mouseDownPos = this.mousePos.slice();
-    this.invokeListeners( event );
+    this.emit( event );
     this.mouseLastClickTime = new Date();
   }
-
   UIManager.prototype.mouseMove = function(event) {
     this.mousePrev = this.mousePos.slice();
     this.mousePos[0] = event.clientX;
     this.mousePos[1] = event.clientY;
-    this.invokeListeners( event );
+    this.emit( event );
   }
-
   UIManager.prototype.keyUp = function(event) {
     this.keyboard[event.which] = false;
     // deal with combinations of shift+alt keys
     if ( event.which==224 )
       this.keyboard[18] = false;
-    this.invokeListeners( event );
+    this.emit( event );
   }
-
   UIManager.prototype.keyDown = function(event) {
     this.keyboard[event.which] = true;
     // deal with combinations of shift+alt keys
     if ( event.which==224 )
       this.keyboard[18] = true;
-    this.invokeListeners( event );
+    this.emit( event );
   }
-
   UIManager.prototype.onResize = function(event)
   {
-    this.invokeListeners( event );
+    this.emit( event );
   }
- 
   UIManager.prototype.onLoad = function(event)
   {
-    this.invokeListeners( event );
+    this.emit( event );
   }
 
-window.onkeydown=function(event){ui.keyDown(event);};
-window.onkeyup=function(event){ui.keyUp(event);};
-window.onmousedown=function(event){ui.mouseDown(event);};
-window.onmouseup=function(event){ui.mouseUp(event);};
-window.onmousemove=function(event){ui.mouseMove(event);};
-window.onresize=function(event){ui.onResize(event);};
-document.onload=function(event){ui.onLoad(event);};
+  var ui = new UIManager();
+  window.onkeydown=function(event){ui.keyDown(event);};
+  window.onkeyup=function(event){ui.keyUp(event);};
+  window.onmousedown=function(event){ui.mouseDown(event);};
+  window.onmouseup=function(event){ui.mouseUp(event);};
+  window.onmousemove=function(event){ui.mouseMove(event);};
+  window.onresize=function(event){ui.onResize(event);};
+  document.onload=function(event){ui.onLoad(event);};
 
   function loadScript(filename, key, callback)
   {

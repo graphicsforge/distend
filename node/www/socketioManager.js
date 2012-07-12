@@ -1,54 +1,36 @@
-    // remember to make a connection to the server this way
-    // var socket = new io.Socket('<? echo $_SERVER['SERVER_NAME']?>', {port:3000, connectTimeout:3000});
-var socketIOManager = new SocketIOManager();
+
+SocketIOManager.prototype = new EventEmitter;
+SocketIOManager.constructor = SocketIOManager;
 function SocketIOManager()
 {
-  this.modulesRegistered = [];
+  this.listeners = []; // hash by type of function arrays
 }
+var socketIOManager = new SocketIOManager();
 
-SocketIOManager.prototype.onConnect = function()
-{
-  for ( var i=0; i<this.modulesRegistered.length; i++ )
-    if ( this.modulesRegistered[i]!=undefined && typeof(this.modulesRegistered[i].onConnect) == 'function' )
-      this.modulesRegistered[i].onConnect();
-}
-
-SocketIOManager.prototype.onMessage = function(line)
-{
-  var parts = line.split('\t');
-  // send the message to handler function, checking if it exists first
-  if ( parts[0].charAt(0)!="/" )
-  {
-    for ( var i=0; i<this.modulesRegistered.length; i++ )
-      if ( this.modulesRegistered[i]!=undefined && typeof(this.modulesRegistered[i].onMessage) == 'function' )
-        this.modulesRegistered[i].onMessage(line.replace(/\\/g,"\\\\").replace(/\"/g));
-  }
-  else if ( parts[1]!=undefined && parts[2]!=undefined )
-  {
-    for ( var i=0; i<this.modulesRegistered.length; i++ )
-      if ( this.modulesRegistered[i]!=undefined && typeof(this.modulesRegistered[i].onMessage) == 'function' )
-        this.modulesRegistered[i].onMessage(parts.slice(2).join('\t'), parts[0].slice(1), parts[1]);
-  }
-}
-
+var socket = io.connect();
 socket.on('connect', function(){
   document.body.style.backgroundColor=("#ffffff");
-  socketIOManager.onConnect();
+  socketIOManager.emit("connect");
 });
-
 socket.on('connect_failed', function(){
   document.body.style.backgroundColor=("#100000");
   alert('The connection to the server failed.');
+  socketIOManager.emit("connect_failed");
 });
-
 socket.on('message', function(message){
   var lines = message.split(/[\n\r]/g);
   for ( var i=0; i<lines.length; i++ )
-    socketIOManager.onMessage( lines[i] );
+  {
+    var parts = lines[i].split('\t');
+    if ( parts[0].charAt(0)!="/" )
+      socketIOManager.emit("message", line);
+    else
+      socketIOManager.emit(parts[0].substring(1), parts.slice(1));
+  }
 });
-
 socket.on('disconnect', function(client){ 
   document.body.style.backgroundColor=("#f00000");
+  socketIOManager.emit("disconnect");
   if ( supportedMobile.test(navigator.userAgent) )
     alert('The connection to the server lost!');
 });
