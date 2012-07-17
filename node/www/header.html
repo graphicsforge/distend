@@ -1,6 +1,5 @@
 <style type="text/css">
   input {
-    background-image:url("header_bg.jpg");
     border: 1px solid #ffffff;
     color:#ffffff;
   }
@@ -77,38 +76,50 @@ var user = new User();  // userinfo object
 function Header()
 {
 }
-var header = new Header();
-ui.modulesRegistered.push(header);
-socketIOManager.modulesRegistered.push(header);
-Header.prototype.onConnect = function(){
-  // if we already got login params, resend them
-  if ( user.signedIn && user.username!=undefined )
-    sendMessage ("/request\theader\tgeneric\t"+user.password+"\t"+user.username+"\n");
-  header.onResize();
-  header.getUserStatus();
-}
-
-Header.prototype.onResize = function (){
-}
-
-Header.prototype.onMessage = function( data, type, target )
+Header.prototype.getUserStatus = function()
 {
-  if ( target!="header" )
-    return;
-  if ( type=="response" )
+  if ( typeof(FB)!='undefined' )
   {
-    if ( data=="fail" )
-    {
-      if ( document.getElementById('header_login_response')!=null )
-        document.getElementById('header_login_response').innerHTML="Would you like to <a href='#' onclick='header_showRequestInviteForm()'>register</a> or did you <a href='#'>forget your password</a>";  return;
-    }
-    else
-    {
-      user.init(JSON.parse(data));
-      document.getElementById('header_login').innerHTML = "Welcome back, <a href='#'>"+user.username.replace(/^FB_/,'')+"</a><br><a href='#' onclick=\"if(typeof(header.FB_uid)!='undefined'){FB.logout(function(response){location.reload(true);});} else {location.reload(true);}\">logout</a>";
-    }
+    var self = this;
+    FB.getLoginStatus(function(response) {
+      if (response.status === 'connected') {
+        self.FB_uid = response.authResponse.userID;
+        self.FB_accessToken = response.authResponse.accessToken;
+        // do the server login
+        FB.api('/me', function(response) {
+          sendMessage('/login\tFB\t'+response.username+'\thttp://graph.facebook.com/'+response.username+'/picture\t'+response.email+'\t'+response.first_name+'\t'+response.middle_name+'\t'+response.last_name+'\n');
+        });
+        // hide any login stuff
+        if ( document.getElementById('fb-login-button')!=undefined )
+          document.getElementById('fb-login-button').style.display="none";
+      }
+      else
+        document.getElementById('fb-login-button').style.display="inline";
+    });
+
   }
 }
+
+var header = new Header();
+socketIOManager.addListener("connect", function(){
+  // if we already got login params, resend them
+  if ( user.signedIn && user.username!=undefined )
+    sendMessage ("/login\tgeneric\t"+user.password+"\t"+user.username+"\n");
+  header.getUserStatus();
+});
+socketIOManager.addListener("login", function(data) {
+  if ( data=="fail" )
+  {
+    if ( document.getElementById('header_login_response')!=null )
+      document.getElementById('header_login_response').innerHTML="Would you like to <a href='#' onclick='header_showRequestInviteForm()'>register</a> or did you <a href='#'>forget your password</a>";
+    return;
+  }
+  user.init(JSON.parse(data));
+  document.getElementById('header_login').innerHTML = "Welcome back, <a href='#'>"+user.username.replace(/^FB_/,'')+"</a><br><a href='#' onclick=\"if(typeof(header.FB_uid)!='undefined'){FB.logout(function(response){location.reload(true);});} else {location.reload(true);}\">logout</a>";
+});
+
+
+
 
 function header_showRequestInviteForm ()
 {
@@ -139,31 +150,7 @@ function header_submitLogin ( username, password )
     document.getElementById('header_login_response').innerHTML="Please enter your password!";  return;
   }
   user.password = password;
-  sendMessage ("/request\theader\tgeneric\t"+password+"\t"+username+"\n");
-}
-
-Header.prototype.getUserStatus = function()
-{
-  if ( typeof(FB)!='undefined' )
-  {
-    var self = this;
-    FB.getLoginStatus(function(response) {
-      if (response.status === 'connected') {
-        self.FB_uid = response.authResponse.userID;
-        self.FB_accessToken = response.authResponse.accessToken;
-        // do the server login
-        FB.api('/me', function(response) {
-          sendMessage('/request\theader\tFB\t'+response.username+'\thttp://graph.facebook.com/'+response.username+'/picture\t'+response.email+'\t'+response.first_name+'\t'+response.middle_name+'\t'+response.last_name+'\n');
-        });
-        // hide any login stuff
-        if ( document.getElementById('fb-login-button')!=undefined )
-          document.getElementById('fb-login-button').style.display="none";
-      }
-      else
-        document.getElementById('fb-login-button').style.display="inline";
-    });
-
-  }
+  sendMessage ("/login\tgeneric\t"+password+"\t"+username+"\n");
 }
 
 window.fbAsyncInit = function() {

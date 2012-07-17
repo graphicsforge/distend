@@ -98,14 +98,14 @@
     this.emit( event );
   }
 
-  var ui = new UIManager();
-  window.onkeydown=function(event){ui.keyDown(event);};
-  window.onkeyup=function(event){ui.keyUp(event);};
-  window.onmousedown=function(event){ui.mouseDown(event);};
-  window.onmouseup=function(event){ui.mouseUp(event);};
-  window.onmousemove=function(event){ui.mouseMove(event);};
-  window.onresize=function(event){ui.onResize(event);};
-  document.onload=function(event){ui.onLoad(event);};
+  var uiManager = new UIManager();
+  window.onkeydown=function(event){uiManager.keyDown(event);};
+  window.onkeyup=function(event){uiManager.keyUp(event);};
+  window.onmousedown=function(event){uiManager.mouseDown(event);};
+  window.onmouseup=function(event){uiManager.mouseUp(event);};
+  window.onmousemove=function(event){uiManager.mouseMove(event);};
+  window.onresize=function(event){uiManager.onResize(event);};
+  document.onload=function(event){uiManager.onLoad(event);};
 
   function loadScript(filename, key, callback)
   {

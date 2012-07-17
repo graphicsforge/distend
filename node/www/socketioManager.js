@@ -23,7 +23,7 @@ socket.on('message', function(message){
   {
     var parts = lines[i].split('\t');
     if ( parts[0].charAt(0)!="/" )
-      socketIOManager.emit("message", line);
+      socketIOManager.emit("message", message);
     else
       socketIOManager.emit(parts[0].substring(1), parts.slice(1));
   }

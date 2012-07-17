@@ -16,7 +16,6 @@ var    websocket = require('node-http-proxy/vendor/websocket'), // node-http-pro
 
 var db = require ("db.js");
 var chatserver = require ("chatserver.js");
-//var yahooSymbols = require ("yahooSymbols.js");
 
 var MSG_SERVER_PORT=8000;
 var HTTP_PORT=3000;
@@ -32,19 +31,20 @@ function sendMainSite(req, res)
   var output = ""+
     "<meta http-equiv=\"X-UA-Compatible\" content=\"chrome=1\">"+
     "<meta name=\"viewport\" content=\"width=device-width; initial-scale=1.0; maximum-scale=1.0;\">"+
-    "\n<title>StrategyBox</title>"+
+    "\n<title>Distend</title>"+
     "\n<script src=\"http://"+req.headers.host+"/socket.io/socket.io.js\"></script>"+
     "\n<script key=\"miscUtils\">"+
         fs.readFileSync(NODE_WWW_PATH+'/uiManager.js', 'utf8')+
     "\n</script>"+
     "\n<script key=\"socketUtils\">"+
-        "\nvar socket = io.connect();\n"+
         fs.readFileSync(NODE_WWW_PATH+'/socketioManager.js', 'utf8')+
     "\n</script>"+
     "<body style=\"background-color:#ffd0d0;font-family: Veranda;overflow:hidden\">"+
         fs.readFileSync(NODE_WWW_PATH+'/header.html', 'utf8')+
         fs.readFileSync(NODE_WWW_PATH+'/statusBox.html', 'utf8')+
-//        fs.readFileSync(NODE_WWW_PATH+'/forum.html', 'utf8')+
+        "<div style='position:relative'>"+
+          fs.readFileSync(NODE_WWW_PATH+'/chat.html', 'utf8')+
+        "</div>"+
     "</body>";
   } catch ( error ) { console.log( error.toString() ) }
   res.end(output);
@@ -61,7 +61,6 @@ function launchWebChatServer()
       res.writeHead(200, {'Content-Type': 'text/html'});
       try {
       var output = "";
-console.log(req.headers['user-agent']);
       if ( req.headers['user-agent'].match(/msie/i) || req.headers['user-agent'].match(/chromeframe/i) )
       {
         output += "<script> var IEBrowser = true;  </script>\n";
@@ -125,32 +124,33 @@ msgwebSocket.sockets.on('connection', function(webClient)
     console.log("msgServerNotifier "+err.code);
   });
   // handle webpage data requests
-  var webClientRequestCallback = function(type, key, args) {
-    if ( key=="statusBox" )
+  var webClientRequestCallback = function(type, args) {
+    if ( type=="statusBox" )
     {
-      if ( type=="join" )
+      if ( args[0]=="join" )
         msgServerNotifier.write("/join statusBox\n");
-      else
-      {
-        var response=chatserver.getClientAliases();
-        webClient.emit('message', "/response\t"+key+"\t"+response);
-      }
+      var response=chatserver.getClientAliases();
+      webClient.emit('message', "/"+type+"\tresponse\t"+response);
     }
-    else if ( key=="header" )
+    else if ( type=="login" )
     {
       if ( args[0]=="FB" )
       {
         db.FBSignIn("FB_"+args[1], args[2], args[3], args[4], function(err, response, result){
           if ( err )
-            webClient.emit('message', "/response\t"+key+"\tfail");
+            webClient.emit('message', "/login\tfail");
           else
           {
             webClient.authenticatedUsername = args[1];
             msgServerNotifier.write("/nick "+webClient.authenticatedUsername.replace(/ /g,"_")+"\n");
-            webClient.emit('message', "/response\t"+key+"\t{\"username\":\""+webClient.authenticatedUsername+"\",\"img\":\""+args[2]+"\"}\n");
+            webClient.emit('message', "/login\t{\"username\":\""+webClient.authenticatedUsername+"\",\"img\":\""+args[2]+"\"}\n");
           }
         });
       }
+    }
+    else if ( type=="chat" )
+    {
+      
     }
  
 
@@ -162,7 +162,7 @@ msgwebSocket.sockets.on('connection', function(webClient)
     if ( delimited.length<2 )
       delimited = lines[0].split(" ");
     if ( delimited[0][0]=="/" )
-      webClientRequestCallback( delimited[0].slice(1), delimited[1], delimited.slice(2) );
+      webClientRequestCallback( delimited[0].slice(1), delimited.slice(1) );
     else
     {
       try {
