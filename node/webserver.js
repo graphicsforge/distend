@@ -150,7 +150,20 @@ msgwebSocket.sockets.on('connection', function(webClient)
     }
     else if ( type=="chat" )
     {
-      
+      if ( args[0]=="post" )
+      {
+        if ( !webClient.authenticatedUsername )
+          return;
+        db.postChat( webClient.authenticatedUsername, args[1], function(){
+        });
+      }
+      else
+      {
+        db.grabChat( function(posts){
+          webClient.emit('message', "/chat\tinit\t"+JSON.stringify(posts));
+  console.log(util.inspect(posts));
+        });
+      }
     }
  
 

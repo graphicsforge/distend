@@ -1,0 +1,22 @@
+
+<script>
+
+  var chat;
+  socketIOManager.addListener('connect', function() {
+    loadScript("chat.js", "chat", function(){
+      chat = new Chat();
+      sendMessage('/chat\n');
+    });
+  });
+
+</script>
+
+  <div id="chat_new_post" onmousemove="if ( typeof(chat)!='undefined' ){chat.adjustNewPostOffset();}">
+      <div id="chat_new_post_modifiers"></div>
+      <textarea id='chat_new_post_text' rows=1 onmouseup="if ( typeof(chat)!='undefined' ){chat.adjustNewPostOffset();}"></textarea>
+      <input id='chat_new_post_button' type='submit' value='post' onclick="chat_new_post(document.getElementById('chat_new_post_text'));" />
+  </div>
+
+  <div id="chat_log">
+  </div>
+
