@@ -154,7 +154,9 @@ msgwebSocket.sockets.on('connection', function(webClient)
       {
         if ( !webClient.authenticatedUsername )
           return;
-        db.postChat( webClient.authenticatedUsername, args[1], function(){
+        db.postChat( webClient.authenticatedUsername, args[1], function(posts){
+          webClient.emit('message', "/chat\tupdate\t"+JSON.stringify(posts));
+          msgServerNotifier.write("/chat\tupdate\t"+JSON.stringify(posts)+"\n");  // update everyone else
         });
       }
       else

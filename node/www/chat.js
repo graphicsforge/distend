@@ -14,20 +14,23 @@ function chat_new_post( element )
 }
 
 socketIOManager.addListener("chat", function(data){
-alert(data);
   var element = document.getElementById('chat_log');
+  var posts = JSON.parse(data[1]);
   if ( data[0]=="init" )
   {
-    var posts = JSON.parse(data[1]);
     // TODO use a templater like mustache.js?
     element.innerHTML = "";
+  }
+  if ( data[0]=="init" || data[0]=="update" )
+  {
     var html = "";
     for ( var i=0; i<posts.length; i++ )
     {
       if ( posts[i]==undefined )
         continue;
-      html += "<div>"+posts[i].username+": "+posts[i].msg+"</div>";
+      html = "<div>"+posts[i].username+": "+posts[i].msg+"</div>"+html;
     }
-    element.innerHTML = html;
+    element.innerHTML = html+element.innerHTML;
   }
+
 });
