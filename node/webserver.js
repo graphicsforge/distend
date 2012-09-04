@@ -45,6 +45,8 @@ function sendMainSite(req, res)
         "<div style='position:relative'>"+
           fs.readFileSync(NODE_WWW_PATH+'/chat.html', 'utf8')+
         "</div>"+
+        fs.readFileSync(NODE_WWW_PATH+'/shaders.inc', 'utf8')+
+        fs.readFileSync(NODE_WWW_PATH+'/render.html', 'utf8')+
     "</body>";
   } catch ( error ) { console.log( error.toString() ) }
   res.end(output);
@@ -56,7 +58,7 @@ function launchWebChatServer()
   // make a standard http server
   httpServer = httpProxy.createServer(function(req, res, proxy){
     // respond to web requests
-    if ( req.url=="/forum" )
+    if ( req.url=="/test" )
     {
       res.writeHead(200, {'Content-Type': 'text/html'});
       try {
@@ -65,11 +67,9 @@ function launchWebChatServer()
       {
         output += "<script> var IEBrowser = true;  </script>\n";
       }
-      output +=
-//            fs.readFileSync(NODE_WWW_PATH+'/shaders.inc', 'utf8')+
-            fs.readFileSync(NODE_WWW_PATH+'/forum.html', 'utf8');
-//            fs.readFileSync(NODE_WWW_PATH+'/portfolio.html', 'utf8');
-//            fs.readFileSync(NODE_WWW_PATH+'/visualization.html', 'utf8');
+      output += ''+
+            fs.readFileSync(NODE_WWW_PATH+'/shaders.inc', 'utf8')+
+            fs.readFileSync(NODE_WWW_PATH+'/render.html', 'utf8');
       } catch ( error ) { console.log( error.toString() ) }
       res.end(output);
       return;

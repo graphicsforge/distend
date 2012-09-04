@@ -1,0 +1,405 @@
+
+<script type="text/javascript" src="http://graphicsforge.servehttp.com:5000/java/jebgl-0.1.js"></script>
+
+<script type="text/javascript" src="camera.js"></script>
+<script type="text/javascript" src="canvasMatrix.js"></script>
+<script type="text/javascript" src="square.obj"></script>
+<script type="text/javascript" src="roses.obj"></script>
+<script>
+
+  function loadScript(filename, key, callback)
+  {
+    // see if we've already got a script with corresponding key
+    var allscripts=document.getElementsByTagName("script");
+    var prevscript = 0;
+    for (var i=allscripts.length; i>=0; i--)
+    {
+      if (allscripts[i]!=undefined && allscripts[i].getAttribute("key")==key )
+      {
+        prevscript = allscripts[i];
+        break;
+      }
+    }
+    var fileref=document.createElement('script')
+    fileref.setAttribute("type","text/javascript");
+    fileref.setAttribute("src", filename);
+    fileref.setAttribute("key", key);
+    if ( callback!=undefined )
+      fileref.onload = callback;//setTimeout( callback, 10000 );
+    var head = document.head;
+    if ( head==undefined )  // this is for IE
+    {
+      head = document.getElementsByTagName('head')[0];
+      head.appendChild(fileref);
+    }
+    else
+    {
+      if ( prevscript==0 )
+        head.appendChild(fileref);
+      else
+        head.replaceChild(prevscript, fileref);
+    }
+  }
+
+  VideoEditor.prototype.displayloop = function()
+  {
+this.camera.rotate([0,.5,0]);
+this.camera.translate([0.01,0,0]);
+this.dirty = true;
+    this.drawGL();
+    var self = this;
+    setTimeout(function(){self.displayloop();}, 10);
+  }
+
+function VideoEditor()
+{
+  this.dirty = true;
+  this.squareobjLoaded = false;
+  var obj = this;
+/*  loadScript( "camera.js", "camera", function(){ obj.scriptsLoaded("cameraLoaded"); } );
+  loadScript( "canvasMatrix.js", "matrix", function(){ obj.scriptsLoaded("matrixLoaded"); } );
+  loadScript( "square.obj", "squareObj", function(){ obj.scriptsLoaded("squareobjLoaded"); } );
+  loadScript( "roses.obj", "rosesObj", function(){ obj.scriptsLoaded("rosesobjLoaded"); } );
+*/
+    this.doLoad();
+  this.contextInited = false;
+}
+
+VideoEditor.prototype.scriptsLoaded = function(scriptName)
+{
+  eval( "this."+scriptName+"=true;" );
+//  if ( this.squareobjLoaded  && this.rosesobjLoaded && this.cameraLoaded && this.matrixLoaded )
+  {
+    this.doLoad();
+    this.onResize();
+// TODO don't do this
+//render_displayloop();
+  }
+}
+
+  function getShader( gl, id )
+  {
+    var shaderScript = document.getElementById ( id );
+    var str = "";
+    var k = shaderScript.firstChild;
+    while ( k ){
+     if ( k.nodeType == 3 ) str += k.textContent;
+     k = k.nextSibling;
+    }
+    var shader;
+    if ( shaderScript.type == "x-shader/x-fragment" )
+           shader = gl.createShader ( gl.FRAGMENT_SHADER );
+    else if ( shaderScript.type == "x-shader/x-vertex" )
+           shader = gl.createShader(gl.VERTEX_SHADER);
+    else return null;
+    gl.shaderSource(shader, str);
+    gl.compileShader(shader);
+    if (gl.getShaderParameter(shader, gl.COMPILE_STATUS) == 0)
+    {
+      alert("error on shader:"+id+" "+gl.getShaderInfoLog(shader));
+    }
+    return shader;
+  }
+
+VideoEditor.prototype.initTextures = function()
+{
+  this.textureLoadAttempts = 0;
+  this.testTexture = this.gl.createTexture();
+  this.testImage = new Image();
+  var obj = this;
+if (navigator.userAgent.toLowerCase().indexOf('chrome') > -1)
+{
+//this.testImage.addEventListener('load', setTimeout( function(){ obj.textureLoaded( obj.testTexture, obj.testImage ); }, 100 ) );
+this.testImage.addEventListener('load', function(){ obj.textureLoaded( obj.testTexture, obj.testImage ); }, false );
+}
+else
+this.testImage.addEventListener('load', function(){ obj.textureLoaded( obj.testTexture, obj.testImage ); }, false );
+  this.testImage.src = "test.jpg";
+}
+
+VideoEditor.prototype.textureLoaded = function( texture, image )
+{
+  var obj = this;
+  var gl = this.gl;
+  try {
+    if ( texture==undefined )
+      texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    this.dirty = true;
+  } catch (error) { if ( obj.textureLoadAttempts<10 ) { document.getElementById('debug').innerHTML=obj.textureLoadAttempts+error; obj.textureLoadAttempts++; setTimeout( function(){obj.textureLoaded(texture, image)}, 1000 ); } else {alert(error);} return; }
+}
+
+VideoEditor.prototype.onResize = function()
+{
+  // jeb hack: need to reget id
+  this.canvas = document.getElementById('videoEditor_canvas');
+  if ( this.canvas==undefined )
+    return;
+  this.canvas.style.height = document.body.clientHeight-150;
+  this.canvas.style.width = parseInt(document.body.clientWidth/2)-10;
+  // reshape canvas contents
+  this.canvas.width = parseInt(this.canvas.style.width);
+  this.canvas.height = parseInt(this.canvas.style.height);
+  this.dirty = true;
+}
+
+
+  VideoEditor.prototype.initGL = function()
+  {
+    var gl = this.gl;
+    // matrixes
+    this.camera = new Camera();
+    this.prMatrix = new CanvasMatrix4();
+    this.mvMatrix = new CanvasMatrix4();
+    // application setup
+    this.videoAlpha = 1;
+    // shaders
+    this.prog = gl.createProgram();
+    var prog = this.prog;
+    gl.attachShader(prog, getShader( gl, "vs-basic" ));
+    gl.attachShader(prog, getShader( gl, "fs-basic" ));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+    this.posLoc = gl.getAttribLocation(prog, "aPos");
+    gl.enableVertexAttribArray( this.posLoc );
+    this.normLoc = gl.getAttribLocation(prog, "aNorm");
+    gl.enableVertexAttribArray( this.normLoc );
+    this.texLoc = gl.getAttribLocation(prog, "aTexCoord");
+    gl.enableVertexAttribArray( this.texLoc );
+    gl.uniform1f(gl.getUniformLocation(prog, "alpha"), 1);
+    // opengl settings
+    gl.clearColor(0.5, 0.5, 0.5, 1);
+    gl.clearDepth(1);
+    gl.depthFunc(gl.LEQUAL);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    // load models  ///////////////////////////////////////////
+    var render_roses_faces = roses_f.length, ti=[],  render_ind = new Uint16Array(render_roses_faces),  t = 0;
+    for(var k = 0; k < render_roses_faces; k++){
+     render_ind[t++] = roses_f[k][0];
+     ti[roses_f[k][0]] = roses_f[k][1];
+    }
+    var n = roses_v.length;
+    var render_roses_vertexes = new Float32Array(8*(n/6)),  t = 0;
+    for(var k = 0; k < n; k += 6){
+      render_roses_vertexes[t++] = roses_v[k];    render_roses_vertexes[t++] = roses_v[k+1];  render_roses_vertexes[t++] = roses_v[k+2];
+      render_roses_vertexes[t++] = roses_v[k+3];  render_roses_vertexes[t++] = roses_v[k+4];  render_roses_vertexes[t++] = roses_v[k+5];
+      var i = 2*ti[k/6];
+      render_roses_vertexes[t++] = roses_vt[i];  render_roses_vertexes[t++] = roses_vt[i+1];
+    }
+
+    this.render_roses_vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.render_roses_vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, render_roses_vertexes, gl.STATIC_DRAW);
+
+    this.render_roses_ibo = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.render_roses_ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, render_ind, gl.STATIC_DRAW);
+    this.render_roses_ibo.numItems = render_roses_faces;
+
+    // square model
+    var square_faces = square_f.length, ti=[],  square_ind = new Uint16Array(square_faces),  t = 0;
+    for(var k = 0; k < square_faces; k++){
+     square_ind[t++] = square_f[k][0];
+     ti[square_f[k][0]] = square_f[k][1];
+    }
+    var n = square_v.length;
+    var square_vertex_data = new Float32Array(8*(n/6)),  t = 0;
+    for(var k = 0; k < n; k += 6){
+      square_vertex_data[t++] = square_v[k];    square_vertex_data[t++] = square_v[k+1];  square_vertex_data[t++] = square_v[k+2];
+      square_vertex_data[t++] = square_v[k+3];  square_vertex_data[t++] = square_v[k+4];  square_vertex_data[t++] = square_v[k+5];
+      var i = 2*ti[k/6];
+      square_vertex_data[t++] = square_vt[i];  square_vertex_data[t++] = square_vt[i+1];
+    }
+    this.square_vbo = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.square_vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, square_vertex_data, gl.STATIC_DRAW);
+
+    this.square_ibo = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.square_ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, square_ind, gl.STATIC_DRAW);
+    this.square_ibo.numItems = square_faces;
+
+    // initialize shader transform variables
+    this.vs_basic_prMatrix = gl.getUniformLocation(prog, "prMatrix");
+    this.vs_basic_mvMatrix = gl.getUniformLocation(prog, "mvMatrix");
+
+    // mark ready and do other notifications
+    this.contextInited = true;
+  }
+
+  VideoEditor.prototype.doLoad = function()
+  {
+    this.canvas = document.getElementById("videoEditor_canvas");
+    var self = this;
+    if ( this.canvas==undefined )
+      return setTimeout(function(){self.doLoad();}, 10);
+
+    this.canvas.width = parseInt(this.canvas.style.width);
+    this.canvas.height = parseInt(this.canvas.style.height);
+
+    if (typeof(IEBrowser)!='undefined' && IEBrowser)
+    {
+      var self = this;
+      jebgl(self.canvas, function() {
+      alert("don't use IE for webgl plz");
+        self.gl = self.canvas.getContext("experimental-webgl");
+        if ( !self.gl )
+        {
+          //alert("Warning: no webGL context available!");
+          return;
+        }
+        self.initGL();
+        self.initTextures();
+        self.dirty = true;
+        self.displayloop();
+      },{alwaysApplet: true});
+    }
+    else
+    {
+      this.gl = this.canvas.getContext("experimental-webgl");
+      if ( !this.gl )
+      {
+        alert("Warning: no webGL context available!");
+        return;
+      }
+      this.initGL();
+      this.initTextures();
+      this.dirty = true;
+      // starting displayloop
+      this.displayloop();
+    }
+  }
+
+
+  VideoEditor.prototype.drawGL = function()
+  {
+    if ( !this.gl )
+      return 0;
+    // check if we're marked for a redraw before doing anything
+    if ( typeof(this.dirty)!='undefined' && this.dirty!=undefined && this.dirty==false )
+      return 1;
+    this.dirty = false;
+    var gl = this.gl;
+    var prMatrix = this.prMatrix;
+    var mvMatrix = this.mvMatrix;
+    var camera = this.camera;
+
+    // check to see if we're loaded yet
+    // set up viewport
+    gl.viewport( 0, 0, this.canvas.width, this.canvas.height );
+    // set up scene
+    gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
+//    gl.disable( gl.DEPTH_TEST );      // TODO my laptop graphics card has errors in the depth test handling with webGL, disabling this for me to give demos
+
+    if ( true )
+    {
+      // setup background texture, 2D origin in centre
+      prMatrix.makeIdentity();
+      prMatrix.ortho(-.5, .5, .5, -.5, -1, 1);
+      gl.uniformMatrix4fv( this.vs_basic_prMatrix, false, new Float32Array(prMatrix.getAsArray()) );
+      mvMatrix.makeIdentity();
+      mvMatrix.translate(-.5, -.5, 0);
+      var backgroundAspectRatio = (parseInt(this.canvas.height)/parseInt(this.canvas.width) * this.testImage.width/this.testImage.height);   // maintain aspect ratio
+      if ( backgroundAspectRatio>=1 )
+        mvMatrix.scale( backgroundAspectRatio, 1, 1 );
+      else
+        mvMatrix.scale( 1, 1/backgroundAspectRatio, 1 );
+      gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
+      gl.uniform1f(gl.getUniformLocation(this.prog, "alpha"), 1);
+
+      gl.bindTexture(gl.TEXTURE_2D, this.testTexture);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.square_vbo);
+        gl.vertexAttribPointer(this.posLoc,  3, gl.FLOAT, false, 32,  0);
+        gl.vertexAttribPointer(this.normLoc, 3, gl.FLOAT, false, 32, 12);
+        gl.vertexAttribPointer(this.texLoc,  2, gl.FLOAT, false, 32, 24);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.square_ibo);
+      gl.drawElements(gl.TRIANGLES, this.square_ibo.numItems, gl.UNSIGNED_SHORT, 0);
+
+
+
+    gl.clear( gl.DEPTH_BUFFER_BIT )
+/*
+    prMatrix.makeIdentity();
+    prMatrix.perspective(camera.vfov, this.canvas.width/this.canvas.height*camera.pixelAspectRatio, camera.frustrumNear, camera.frustrumFar);
+    gl.uniformMatrix4fv( this.vs_basic_prMatrix, false, new Float32Array(prMatrix.getAsArray()) );
+    gl.uniform1f(gl.getUniformLocation(this.prog, "alpha"), .9);
+    mvMatrix.makeIdentity();
+    mvMatrix.translate(-.5, -.5, -.5);
+    mvMatrix.multRight(camera.extrinsic);
+    gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
+      gl.drawElements(gl.TRIANGLES, this.square_ibo.numItems, gl.UNSIGNED_SHORT, 0);
+
+    mvMatrix.makeIdentity();
+    mvMatrix.translate(-.5, -.5, .5);
+    mvMatrix.multRight(camera.extrinsic);
+    gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
+      gl.drawElements(gl.TRIANGLES, this.square_ibo.numItems, gl.UNSIGNED_SHORT, 0);
+
+
+    mvMatrix.makeIdentity();
+    mvMatrix.translate(-.5, -.5, 0);
+    mvMatrix.rotate(90, 0,1,0);
+    mvMatrix.translate(-.5, 0, 0);
+    mvMatrix.multRight(camera.extrinsic);
+    gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
+      gl.drawElements(gl.TRIANGLES, this.square_ibo.numItems, gl.UNSIGNED_SHORT, 0);
+
+    mvMatrix.makeIdentity();
+    mvMatrix.translate(-.5, -.5, 0);
+    mvMatrix.rotate(90, 0,1,0);
+    mvMatrix.translate(.5, 0, 0);
+    mvMatrix.multRight(camera.extrinsic);
+    gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
+      gl.drawElements(gl.TRIANGLES, this.square_ibo.numItems, gl.UNSIGNED_SHORT, 0);
+*/
+
+    prMatrix.makeIdentity();
+    prMatrix.perspective(camera.vfov, this.canvas.width/this.canvas.height*camera.pixelAspectRatio, camera.frustrumNear, camera.frustrumFar);
+    gl.uniformMatrix4fv( this.vs_basic_prMatrix, false, new Float32Array(prMatrix.getAsArray()) );
+    gl.uniform1f(gl.getUniformLocation(this.prog, "alpha"), .9);
+    mvMatrix.makeIdentity();
+    mvMatrix.rotate(90, 1,0,0);
+    mvMatrix.multRight(camera.extrinsic);
+    gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
+
+
+    gl.bindTexture(gl.TEXTURE_2D, this.testTexture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.render_roses_vbo);
+      gl.vertexAttribPointer(this.posLoc,  3, gl.FLOAT, false, 32,  0);
+      gl.vertexAttribPointer(this.normLoc, 3, gl.FLOAT, false, 32, 12);
+      gl.vertexAttribPointer(this.texLoc,  2, gl.FLOAT, false, 32, 24);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.render_roses_ibo);
+    gl.drawElements(gl.TRIANGLES, this.render_roses_ibo.numItems, gl.UNSIGNED_SHORT, 0);
+
+
+      gl.bindTexture(gl.TEXTURE_2D, null);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      gl.enable( gl.DEPTH_TEST );
+
+      // setup huds
+//      gl.clear( gl.DEPTH_BUFFER_BIT );  // draw hud elements on top
+    }
+
+//    gl.flush();
+  }
+
+
+
+var videoEditor;
+videoEditor = new VideoEditor();
+</script>
+
+<canvas style="position:absolute;width:400px;height:400px;right:0px;bottom:0px;" id="videoEditor_canvas" oncontextmenu="return false;"></canvas>
