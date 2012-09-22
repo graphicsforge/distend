@@ -9,7 +9,7 @@ function Camera(vfov)
   this.frustrumFar = 100;
   this.extrinsic = new CanvasMatrix4();
   this.rotate([-80, 0, 0]);
-  this.extrinsic.translate( 0, 0, -1 );
+  this.extrinsic.translate( 0, -5, -6 );
 }
 
 Camera.prototype.rotate = function( relativeRotation )
