@@ -3,7 +3,7 @@
 
   var chat;
   socketIOManager.addListener('connect', function() {
-    loadScript("chat.js", "chat", function(){
+    UIManager.loadScript("chat.js", "chat", function(){
       chat = new Chat();
       sendMessage('/chat\n');
     });

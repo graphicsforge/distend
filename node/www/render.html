@@ -2,6 +2,7 @@
 <script type="text/javascript" src="camera.js"></script>
 <script type="text/javascript" src="canvasMatrix.js"></script>
 <script type="text/javascript" src="model.js"></script>
+<script type="text/javascript" src="texture.js"></script>
 <script>
 
   Renderer.prototype.displayloop = function()
@@ -47,49 +48,6 @@
     return shader;
   }
 
-Renderer.prototype.initTextures = function()
-{
-  this.textureLoadAttempts = 0;
-  this.testTexture = this.gl.createTexture();
-  this.testImage = new Image();
-  var obj = this;
-if (navigator.userAgent.toLowerCase().indexOf('chrome') > -1)
-{
-//this.testImage.addEventListener('load', setTimeout( function(){ obj.textureLoaded( obj.testTexture, obj.testImage ); }, 100 ) );
-this.testImage.addEventListener('load', function(){ obj.textureLoaded( obj.testTexture, obj.testImage ); }, false );
-}
-else
-this.testImage.addEventListener('load', function(){ obj.textureLoaded( obj.testTexture, obj.testImage ); }, false );
-  this.testImage.src = "test.jpg";
-}
-
-Renderer.prototype.textureLoaded = function( texture, image )
-{
-  var obj = this;
-  var gl = this.gl;
-  try {
-    if ( texture==undefined )
-      texture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-    this.dirty = true;
-  } catch (error) { if ( obj.textureLoadAttempts<10 ) { document.getElementById('debug').innerHTML=obj.textureLoadAttempts+error; obj.textureLoadAttempts++; setTimeout( function(){obj.textureLoaded(texture, image)}, 1000 ); } else {alert(error);} return; }
-}
-
-Renderer.prototype.onResize = function()
-{
-  this.canvas = document.getElementById('renderer_canvas');
-  if ( this.canvas==undefined )
-    return;
-  this.canvas.style.height = document.body.clientHeight-150;
-  this.canvas.style.width = parseInt(document.body.clientWidth/2)-10;
-  // reshape canvas contents
-  this.canvas.width = parseInt(this.canvas.style.width);
-  this.canvas.height = parseInt(this.canvas.style.height);
-  this.dirty = true;
-}
-
-
   Renderer.prototype.initGL = function()
   {
     var gl = this.gl;
@@ -113,6 +71,9 @@ Renderer.prototype.onResize = function()
     this.texLoc = gl.getAttribLocation(prog, "aTexCoord");
     gl.enableVertexAttribArray( this.texLoc );
     gl.uniform1f(gl.getUniformLocation(prog, "alpha"), 1);
+    // initialize shader transform variables
+    this.vs_basic_prMatrix = gl.getUniformLocation(prog, "prMatrix");
+    this.vs_basic_mvMatrix = gl.getUniformLocation(prog, "mvMatrix");
     // opengl settings
     gl.clearColor(0.5, 0.5, 0.5, 1);
     gl.clearDepth(1);
@@ -120,26 +81,32 @@ Renderer.prototype.onResize = function()
     gl.enable(gl.BLEND);
     gl.enable( gl.DEPTH_TEST );
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-
+    // load models
     this.models = [];
     this.models['test'] = new Model(gl, '/test.json');
     this.models['square'] = new Model(gl, '/square.json');
-
-    // initialize shader transform variables
-    this.vs_basic_prMatrix = gl.getUniformLocation(prog, "prMatrix");
-    this.vs_basic_mvMatrix = gl.getUniformLocation(prog, "mvMatrix");
+    // load textures
+    this.textures = [];
+    this.textures['test'] = new Texture(gl, '/test.jpg');
   }
 
   Renderer.prototype.doLoad = function()
   {
     this.canvas = document.getElementById("renderer_canvas");
     var self = this;
+    // wait until such a dom element exists
     if ( this.canvas==undefined )
       return setTimeout(function(){self.doLoad();}, 10);
-
+    // attach ui listeners
+    if ( uiManager!=undefined )
+    {
+      this.canvasPos = UIManager.getOffset(this.canvas);
+      uiManager.addListener('mousemove', this.onMouseMove, self);
+      uiManager.addListener('resize', this.onResize, self);
+    }
     this.canvas.width = parseInt(this.canvas.style.width);
     this.canvas.height = parseInt(this.canvas.style.height);
-
+    // generate webgl context
     this.gl = this.canvas.getContext("experimental-webgl");
     if ( !this.gl )
     {
@@ -147,12 +114,34 @@ Renderer.prototype.onResize = function()
       return;
     }
     this.initGL();
-    this.initTextures();
     this.dirty = true;
     // starting displayloop
     this.displayloop();
   }
 
+  Renderer.prototype.onResize = function(event, self)
+  {
+    if ( self.canvas==undefined )
+      return;
+    self.canvasPos = UIManager.getOffset(self.canvas);
+    //self.canvas.style.height = document.body.clientHeight-150;
+    //self.canvas.style.width = parseInt(document.body.clientWidth/2)-10;
+    // reshape canvas contents
+    self.canvas.width = parseInt(self.canvas.style.width);
+    self.canvas.height = parseInt(self.canvas.style.height);
+    self.dirty = true;
+  }
+
+  Renderer.prototype.onMouseMove = function(event, self)
+  {
+    if ( self.canvas==undefined )
+      return;
+    // grab relative mouse position ( range -0.5 to 0.5 )
+    self.mousePos = uiManager.mousePos.slice(0);
+    self.mousePos[0] = (self.mousePos[0]-self.canvasPos[0])/self.canvas.width-0.5;
+    self.mousePos[1] = (self.mousePos[1]-self.canvasPos[1])/self.canvas.height-0.5;
+    self.dirty = true;
+  }
 
   Renderer.prototype.drawGL = function()
   {
@@ -179,7 +168,7 @@ Renderer.prototype.onResize = function()
     gl.uniformMatrix4fv( this.vs_basic_prMatrix, false, new Float32Array(prMatrix.getAsArray()) );
     mvMatrix.makeIdentity();
     mvMatrix.translate(-.5, -.5, 0);
-    var backgroundAspectRatio = (parseInt(this.canvas.height)/parseInt(this.canvas.width) * this.testImage.width/this.testImage.height);   // maintain aspect ratio
+    var backgroundAspectRatio = (parseInt(this.canvas.height)/parseInt(this.canvas.width) * this.textures['test'].aspect);   // maintain aspect ratio
     if ( backgroundAspectRatio>=1 )
       mvMatrix.scale( backgroundAspectRatio, 1, 1 );
     else
@@ -187,14 +176,17 @@ Renderer.prototype.onResize = function()
     gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
     gl.uniform1f(gl.getUniformLocation(this.prog, "alpha"), 1);
 
-    gl.bindTexture(gl.TEXTURE_2D, this.testTexture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.textures['test'].bind(gl);
     this.models['square'].draw(gl, this.posLoc, this.normLoc, this.texLoc);
 
     gl.clear( gl.DEPTH_BUFFER_BIT )
+    mvMatrix.makeIdentity();
+    mvMatrix.scale( .1, .1, .1 );
+    if ( this.mousePos )
+      mvMatrix.translate(this.mousePos[0], this.mousePos[1], 0);
+    gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
+    this.models['square'].draw(gl, this.posLoc, this.normLoc, this.texLoc);
+
 
     // draw 3D scene
     prMatrix.makeIdentity();
@@ -206,16 +198,12 @@ Renderer.prototype.onResize = function()
     mvMatrix.multRight(camera.extrinsic);
     gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
 
-    gl.bindTexture(gl.TEXTURE_2D, this.testTexture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
+    this.textures['test'].bind(gl);
     this.models['test'].draw(gl, this.posLoc, this.normLoc, this.texLoc);
 
     gl.bindTexture(gl.TEXTURE_2D, null);
 
+    gl.clear( gl.DEPTH_BUFFER_BIT )
   }
 
 

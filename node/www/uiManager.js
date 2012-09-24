@@ -3,13 +3,18 @@
 
   function EventEmitter() {
     this.listeners = []; // hash by type of function arrays
+    this.state = []; // hash by type of function arrays
   }
-  EventEmitter.prototype.addListener = function( eventType, functionPointer ) {
+  EventEmitter.prototype.addListener = function( eventType, functionPointer, state ) {
     if ( typeof functionPointer != "function" )
       return;
     if ( this.listeners[eventType] == undefined )
+    {
       this.listeners[eventType] = [];
+      this.state[eventType] = [];
+    }
     this.listeners[eventType].push(functionPointer);
+    this.state[eventType].push(state);
   }
   EventEmitter.prototype.removeListener = function( eventType, functionPointer ) {
     if ( this.listeners[eventType] == undefined )
@@ -17,31 +22,30 @@
     for (var i=0; i<this.listeners[eventType].length; i++) {
       if ( this.listeners[eventType][i] === functionPointer ) {
         this.listeners[eventType].splice(i, 1);
+        this.state[eventType].splice(i, 1);
         i = i-1;
       }
     }
   }
   EventEmitter.prototype.emit = function( event, data ) {
-    if ( typeof( event ) == "string" ) {
-      if ( this.listeners[event] == undefined )
-        return;
-      for (var i=0; i<this.listeners[event].length; i++)
-        try {
-          this.listeners[event][i]( data );
-        } catch ( error ) { alert( error.message ) }
-      return;
-    }
+    if ( typeof( event ) == "string" )
+      var eventType = event;
+    else
+      var eventType = event.type;
+    // bail if we don't have a usefull type
     if ( event.type == undefined )
       return;
-    if ( this.listeners[event.type] == undefined )
+    // bail if we don't have a listener
+    if ( this.listeners[eventType] == undefined )
       return;
-    for (var i=0; i<this.listeners[event.type].length; i++)
+    // give the event object if data unset
+    if ( data==undefined )
+      data = event;
+    for (var i=0; i<this.listeners[eventType].length; i++)
       try {
-        this.listeners[event.type][i]( event );
-      } catch ( error ) { alert( error.message ) }
+        this.listeners[eventType][i]( data, this.state[eventType][i] );
+      } catch ( error ) { console.error( error.message ) }
   }
-
-
 
   UIManager.prototype = new EventEmitter;
   UIManager.constructor = UIManager;
@@ -107,7 +111,7 @@
   window.onresize=function(event){uiManager.onResize(event);};
   document.onload=function(event){uiManager.onLoad(event);};
 
-  function loadScript(filename, key, callback)
+  UIManager.loadScript = function(filename, key, callback)
   {
     // see if we've already got a script with corresponding key
     var allscripts=document.getElementsByTagName("script");
@@ -139,6 +143,17 @@
       else
         head.replaceChild(prevscript, fileref);
     }
+  }
+
+  UIManager.getOffset = function( element )
+  {
+    var position = [0, 0];
+    while( element && !isNaN( element.offsetLeft ) && !isNaN( element.offsetTop ) ) {
+        position[0] += element.offsetLeft - element.scrollLeft;
+        position[1] += element.offsetTop - element.scrollTop;
+        element = element.offsetParent;
+    }
+    return position;
   }
 
   // I have to raise the scope of the callback specified here, in order to invoke it on the event

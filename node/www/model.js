@@ -31,7 +31,6 @@ function Model( gl, url )
         console.error( xhr.responseText );
     }
   }
-
   xhr.send();
 }
 
