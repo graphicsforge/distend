@@ -39,6 +39,16 @@ Model.prototype.isInited = function()
   return this.numFaces>0;
 }
 
+Model.prototype.getCoord = function(transform, index)
+{
+  if ( !this.isInited() )
+    return;
+  var pos = [this.vertexes[index*8],this.vertexes[index*8+1],this.vertexes[index*8+2],1];
+  pos[3] = 1;
+  var out = transform.apply(pos);
+return out;
+}
+
 Model.prototype.draw = function(gl, posLoc, normLoc, texLoc)
 {
   if ( !this.isInited() )

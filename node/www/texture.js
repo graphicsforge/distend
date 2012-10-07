@@ -11,7 +11,7 @@ function Texture(gl, url)
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, self.image);
     self.aspect = self.image.width/self.image.height;
   }, false );
-  this.image.src = "test.jpg";
+  this.image.src = url;
 }
 
 Texture.prototype.bind = function(gl)

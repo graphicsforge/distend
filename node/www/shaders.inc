@@ -25,6 +25,6 @@ precision highp float;
   varying float i;
 void main(void) {
    vec4 c = texture2D(uTexSamp, vTexCoord);
-   gl_FragColor = vec4(i * c.rgb, alpha);
+   gl_FragColor = c;
 }
 </script> 
