@@ -3,18 +3,13 @@
 
   function EventEmitter() {
     this.listeners = []; // hash by type of function arrays
-    this.state = []; // hash by type of function arrays
   }
-  EventEmitter.prototype.addListener = function( eventType, functionPointer, state ) {
+  EventEmitter.prototype.addListener = function( eventType, functionPointer ) {
     if ( typeof functionPointer != "function" )
       return;
     if ( this.listeners[eventType] == undefined )
-    {
       this.listeners[eventType] = [];
-      this.state[eventType] = [];
-    }
     this.listeners[eventType].push(functionPointer);
-    this.state[eventType].push(state);
   }
   EventEmitter.prototype.removeListener = function( eventType, functionPointer ) {
     if ( this.listeners[eventType] == undefined )
@@ -22,7 +17,6 @@
     for (var i=0; i<this.listeners[eventType].length; i++) {
       if ( this.listeners[eventType][i] === functionPointer ) {
         this.listeners[eventType].splice(i, 1);
-        this.state[eventType].splice(i, 1);
         i = i-1;
       }
     }
@@ -30,11 +24,12 @@
   EventEmitter.prototype.emit = function( event, data ) {
     if ( typeof( event ) == "string" )
       var eventType = event;
-    else
+    else {
       var eventType = event.type;
-    // bail if we don't have a usefull type
-    if ( event.type == undefined )
-      return;
+      // bail if we don't have a useful type
+      if ( event.type == undefined )
+        return;
+    }
     // bail if we don't have a listener
     if ( this.listeners[eventType] == undefined )
       return;
@@ -43,7 +38,7 @@
       data = event;
     for (var i=0; i<this.listeners[eventType].length; i++)
       try {
-        this.listeners[eventType][i]( data, this.state[eventType][i] );
+        this.listeners[eventType][i]( data );
       } catch ( error ) { console.error( error.message ) }
   }
 

@@ -1,5 +1,5 @@
 
-function Model( gl, url )
+function Model( gl, url, callback )
 {
   var xhr = new XMLHttpRequest();
   xhr.open("GET", url, true);
@@ -26,9 +26,12 @@ function Model( gl, url )
         self.ibo = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, self.ibo);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, self.indexes, gl.STATIC_DRAW);
+
+        if ( typeof(callback)=='function')
+          callback(self);
       }
       if ( xhr.status==500 )
-        console.error( xhr.responseText );
+        console.error( 'Model() load error:'+xhr.responseText );
     }
   }
   xhr.send();
@@ -39,14 +42,12 @@ Model.prototype.isInited = function()
   return this.numFaces>0;
 }
 
-Model.prototype.getCoord = function(transform, index)
+Model.prototype.getCoord = function(index)
 {
   if ( !this.isInited() )
-    return;
+    return undefined;
   var pos = [this.vertexes[index*8],this.vertexes[index*8+1],this.vertexes[index*8+2],1];
-  pos[3] = 1;
-  var out = transform.apply(pos);
-return out;
+  return pos;
 }
 
 Model.prototype.draw = function(gl, posLoc, normLoc, texLoc)
@@ -62,3 +63,4 @@ Model.prototype.draw = function(gl, posLoc, normLoc, texLoc)
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
+

@@ -34,10 +34,10 @@ function sendMainSite(req, res)
     "\n<title>Distend</title>"+
     "\n<script src=\"http://"+req.headers.host+"/socket.io/socket.io.js\"></script>"+
     "\n<script key=\"miscUtils\">"+
-        fs.readFileSync(NODE_WWW_PATH+'/uiManager.js', 'utf8')+
+        fs.readFileSync(NODE_WWW_PATH+'/UIManager.js', 'utf8')+
     "\n</script>"+
     "\n<script key=\"socketUtils\">"+
-        fs.readFileSync(NODE_WWW_PATH+'/socketioManager.js', 'utf8')+
+        fs.readFileSync(NODE_WWW_PATH+'/SocketIOManager.js', 'utf8')+
     "\n</script>"+
     "<body style=\"background-color:#ffd0d0;font-family: Veranda;overflow:hidden\">"+
         fs.readFileSync(NODE_WWW_PATH+'/header.html', 'utf8')+
