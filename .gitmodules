@@ -40,3 +40,6 @@
 [submodule "node/node_modules/pkginfo"]
 	path = node/node_modules/pkginfo
 	url = git://github.com/indexzero/node-pkginfo.git
+[submodule "node/node_modules/formidable"]
+	path = node/node_modules/formidable
+	url = git://github.com/felixge/node-formidable.git
