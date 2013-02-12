@@ -1,0 +1,131 @@
+
+<script type="text/javascript" src="classes/Camera.js"></script>
+<script type="text/javascript" src="classes/CanvasMatrix.js"></script>
+<script type="text/javascript" src="classes/Model.js"></script>
+<script type="text/javascript" src="classes/Texture.js"></script>
+<script type="text/javascript" src="classes/Viewport.js"></script>
+
+<script type="text/javascript" src="classes/Renderer.js"></script>
+<script type="text/javascript" src="classes/Hand.js"></script>
+<script type="text/javascript" src="classes/RigPoint.js"></script>
+
+<script type="text/javascript" src="modifier/Modifier.js"></script>
+<script type="text/javascript" src="modifier/ImportUpload.js"></script>
+<script type="text/javascript" src="modifier/Remesh.js"></script>
+<script type="text/javascript" src="modifier/LapSmooth.js"></script>
+<script type="text/javascript" src="modifier/SimpleDeform.js"></script>
+
+<style type="text/css">
+.modifier {
+  background-color:#fff;
+  border-radius:5px;
+  padding:5px;
+  margin:5px;
+  color:#000;
+  box-shadow:inset 0px 0px 20px;
+  transition: all 0.5s;
+  -moz-transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+  -o-transition: all 0.5s;
+}
+.modifier .toggle_expand {
+  float:left;
+  padding: 3px;
+  cursor: pointer;
+  opacity: 0.3;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  transform:rotate(180deg);
+  -moz-transform:rotate(180deg);
+  -webkit-transform:rotate(180deg);
+  -ms-transform:rotate(180deg);
+  -o-transform:rotate(180deg);
+  transition: all 0.5s;
+  -moz-transition: all 0.5s;
+  -webkit-transition: all 0.5s;
+  -o-transition: all 0.5s;
+}
+.modifier .toggle_expand:hover {
+  opacity: 1;
+}
+.modifier[slimview="1"] .toggle_expand {
+  transform:rotate(90deg);
+  -moz-transform:rotate(90deg);
+  -webkit-transform:rotate(90deg);
+  -ms-transform:rotate(90deg);
+  -o-transform:rotate(90deg);
+}
+.modifier .controls {
+  max-height: 300px;
+  overflow-y: auto;
+}
+.close_button, .progress_bar {
+  float: right;
+}
+.modifier[slimview="1"] .controls {
+  max-height: 0px;
+}
+</style>
+
+<script>
+if( typeof(chatServerNick)=='undefined' )
+  var chatServerNick = '';
+var modifierList = new ModifierList();
+
+// listen to debug and progress from blender
+socketIOManager.addListener('modstatus', function(data){
+  var index = data[0];
+  var messageArray = data.slice(1);
+  if ( modifierList.modifiers[index]!=undefined &&
+       typeof(modifierList.modifiers[index].onmessage)=='function' )
+    modifierList.modifiers[index].onmessage(messageArray);
+});
+socketIOManager.addListener('nick', function(data){
+  console.log('got nick '+data);
+  chatServerNick = data;
+  modifierList.setTarget( document.getElementById('modifiers') );
+});
+// TODO: this should be some real username
+socketIOManager.sendMessage('/nick '+chatServerNick);
+
+socketIOManager.addListener('outputurl', function(data){
+  document.getElementById('downloadLink').innerHTML="<a style='font-weight:bold' href='"+data.join('%20')+"'>Download</a><hr>";
+  document.getElementById('upload_button').style.display = 'block';
+});
+
+socketIOManager.addListener('updatemodel', function(data){
+  var model = data[0];
+  var filename = data[1];
+  renderer.setModel(model, filename);
+});
+
+// init renderer
+var renderer = new Renderer("preview_canvas");
+
+function newModifier(element)
+{
+  modifier = eval('new '+element.value+'()');
+  modifierList.appendModifier(modifier);
+  element.selectedIndex = 0;
+}
+
+</script>
+<div id="downloadLink"></div>
+
+
+<canvas style="float:right;width:60%;height:400px;" id="preview_canvas" oncontextmenu="return false;"></canvas>
+
+<div id="modifiers" style="float:left;width:40%"></div>
+<div style="float:left;width:40%">
+  <select onchange="newModifier(this);" onclick="return false;">
+    <option>add modifier</option>
+    <option value="ImportUpload">upload file</option>
+    <option value="Remesh">remesh</option>
+    <option value="LapSmooth">laplacian smooth</option>
+    <option value="SimpleDeform">simple deform</option>
+  </select>
+</div>
+
+<div id="console" style="position:absolute;z-index:-1;right:0px;width:59%;"></div>

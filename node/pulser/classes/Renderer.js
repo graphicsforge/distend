@@ -1,21 +1,17 @@
 
-<script type="text/javascript" src="Camera.js"></script>
-<script type="text/javascript" src="CanvasMatrix.js"></script>
-<script type="text/javascript" src="Model.js"></script>
-<script type="text/javascript" src="Texture.js"></script>
-<script type="text/javascript" src="Viewport.js"></script>
-
-<script type="text/javascript" src="Hand.js"></script>
-<script type="text/javascript" src="RigPoint.js"></script>
-<script>
-
   Renderer.prototype = new EventEmitter;
   Renderer.constructor = Renderer;
-  function Renderer()
+  function Renderer(canvasID)
   {
-    this.hand = new Hand(this);
     this.dirty = true;
-    this.doLoad();
+    this.doLoad(canvasID);
+    this.sceneObjects = [];
+  }
+
+  Renderer.prototype.setModel = function(index, filename)
+  {
+    var self = this;
+    this.sceneObjects[0] = new Model(this.gl, filename, function(){self.dirty=true;});
   }
 
   function getShader( gl, id )
@@ -49,7 +45,7 @@
     if ( this.lastRenderTime!=undefined )
       var renderTimeDiff = now.getTime()-this.lastRenderTime.getTime();
     this.lastRenderTime = now;
-    if ( true ) //autorotate
+    if ( false ) //autorotate
     {
       this.camera.rotate([0,.5,0]);
       this.camera.translate([0.05,0,0]);
@@ -63,6 +59,7 @@
   Renderer.prototype.initGL = function()
   {
     var gl = this.gl;
+    var self = this;
     // matrixes
     this.camera = new Camera();
     this.prMatrix = new CanvasMatrix4();
@@ -87,7 +84,7 @@
     this.vs_basic_prMatrix = gl.getUniformLocation(prog, "prMatrix");
     this.vs_basic_mvMatrix = gl.getUniformLocation(prog, "mvMatrix");
     // opengl settings
-    gl.clearColor(0.5, 0.5, 0.5, 1);
+    gl.clearColor(0.2, 0.2, 0.2, 0);
     gl.clearDepth(1);
     gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.BLEND);
@@ -98,29 +95,39 @@
     this.models['square'] = new Model(gl, '/square.json');
     // load textures
     this.textures = [];
-    this.textures['test'] = new Texture(gl, '/test.jpg');
+    //this.textures['background'] = new Texture(gl, '/test.jpg', function(){ self.dirty=true; });
     this.textures['crosshair'] = new Texture(gl, '/crosshair.png');
+    this.textures['model'] = new Texture(gl, '/colormap.png', function(){ self.dirty=true; });
     // share event
     this.emit( "initgl", gl );
   }
 
-  Renderer.prototype.doLoad = function()
+  Renderer.prototype.replaceTexture = function(index, url)
   {
-    this.canvas = document.getElementById("renderer_canvas");
+    var self = this;
+    this.textures[index] = new Texture(gl, url, function(){
+      self.dirty=true;
+    });
+  }
+
+  Renderer.prototype.doLoad = function(canvasID)
+  {
+    this.canvas = document.getElementById(canvasID);
     var self = this;
     // wait until such a dom element exists
     if ( this.canvas==undefined )
-      return setTimeout(function(){self.doLoad();}, 10);
+      return setTimeout(function(){self.doLoad(canvasID);}, 10);
     // attach ui listeners
     if ( uiManager!=undefined )
     {
       this.canvasPos = UIManager.getOffset(this.canvas);
       uiManager.addListener('mousemove', function(event){self.onMouseMove(event);});
+      uiManager.addListener('mousewheel', function(event){self.dirty=true;});
       uiManager.addListener('resize', this.onResize, self);
       uiManager.addListener('mousedown', function(event){self.emit(event)});
     }
-    this.canvas.width = parseInt(this.canvas.style.width);
-    this.canvas.height = parseInt(this.canvas.style.height);
+    this.canvas.width = parseInt(this.canvas.clientWidth);
+    this.canvas.height = parseInt(this.canvas.clientHeight);
     // generate webgl context
     this.gl = this.canvas.getContext("experimental-webgl", { antialias: true });
     if ( !this.gl )
@@ -136,14 +143,14 @@
 
   Renderer.prototype.onResize = function(event)
   {
-    if ( self.canvas==undefined )
+    if ( this.canvas==undefined )
       return;
     this.canvasPos = UIManager.getOffset(this.canvas);
     //this.canvas.style.height = document.body.clientHeight-150;
     //this.canvas.style.width = parseInt(document.body.clientWidth/2)-10;
     // reshape canvas contents
-    this.canvas.width = parseInt(this.canvas.style.width);
-    this.canvas.height = parseInt(this.canvas.style.height);
+    this.canvas.width = parseInt(this.canvas.clientWidth);
+    this.canvas.height = parseInt(this.canvas.clientHeight);
     this.dirty = true;
   }
 
@@ -184,6 +191,7 @@
     var prMatrix = this.prMatrix;
     var mvMatrix = this.mvMatrix;
     var camera = this.camera;
+    var canvas = this.canvas;
 
     // TODO: check to see if we're loaded yet
     // set up viewport
@@ -192,23 +200,25 @@
     gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 
     // setup background texture, 2D origin in centre
-    prMatrix.makeIdentity();
-    prMatrix.ortho(0, this.canvas.width, this.canvas.height, 0, -1, 1);
-    gl.uniformMatrix4fv( this.vs_basic_prMatrix, false, new Float32Array(prMatrix.getAsArray()) );
-    mvMatrix.makeIdentity();
-    mvMatrix.translate(0, -.5, 0);
-    var backgroundAspectRatio = (parseInt(this.canvas.height)/parseInt(this.canvas.width) * this.textures['test'].aspect);   // maintain aspect ratio
-    if ( backgroundAspectRatio>=1 )
-      mvMatrix.scale( backgroundAspectRatio, 1, 1 );
-    else
-      mvMatrix.scale( 1, 1/backgroundAspectRatio, 1 );
-    mvMatrix.scale( this.canvas.width, this.canvas.width, 1 );
-    gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
-    gl.uniform1f(gl.getUniformLocation(this.prog, "alpha"), 1);
+    if ( false )
+    {
+      prMatrix.makeIdentity();
+      prMatrix.ortho(0, this.canvas.width, this.canvas.height, 0, -1, 1);
+      gl.uniformMatrix4fv( this.vs_basic_prMatrix, false, new Float32Array(prMatrix.getAsArray()) );
+      mvMatrix.makeIdentity();
+      var backgroundAspectRatio = (parseInt(this.canvas.height)/parseInt(this.canvas.width) * this.textures['test'].aspect);   // maintain aspect ratio
+      if ( backgroundAspectRatio>=1 )
+        mvMatrix.scale( backgroundAspectRatio, 1, 1 );
+      else
+        mvMatrix.scale( 1, 1/backgroundAspectRatio, 1 );
+      mvMatrix.translate(0, -.25, 0);
+      mvMatrix.scale( this.canvas.width, this.canvas.width, 1 );
+      gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
+      gl.uniform1f(gl.getUniformLocation(this.prog, "alpha"), 1);
 
-    this.textures['test'].bind(gl);
-    this.models['square'].draw(gl, this.posLoc, this.normLoc, this.texLoc);
-
+      this.textures['background'].bind(gl);
+      this.models['square'].draw(gl, this.posLoc, this.normLoc, this.texLoc);
+    }
 
     mvMatrix.makeIdentity();
     mvMatrix.translate(-.5, -.5, 0);
@@ -220,10 +230,18 @@
     this.models['square'].draw(gl, this.posLoc, this.normLoc, this.texLoc);
 
     gl.clear( gl.DEPTH_BUFFER_BIT )
-    this.hand.draw();
+
+    prMatrix.makeIdentity();
+    prMatrix.perspective(camera.vfov, canvas.width/canvas.height*camera.pixelAspectRatio, camera.frustrumNear, camera.frustrumFar);
+    gl.uniformMatrix4fv( this.vs_basic_prMatrix, false, new Float32Array(prMatrix.getAsArray()) );
+    mvMatrix.makeIdentity();
+    mvMatrix.rotate(90, 1,0,0);
+    mvMatrix.scale(.01,.01,.01);
+    mvMatrix.multRight(camera.extrinsic);
+    gl.uniformMatrix4fv( this.vs_basic_mvMatrix, false, new Float32Array(mvMatrix.getAsArray()) );
+    this.textures['model'].bind(gl);
+    for ( var i=0; i<this.sceneObjects.length; i++ )
+      this.sceneObjects[i].draw(gl, this.posLoc, this.normLoc, this.texLoc);
+    gl.clear( gl.DEPTH_BUFFER_BIT )
   }
 
-var renderer = new Renderer();
-</script>
-
-<canvas style="position:absolute;width:1000px;height:500px;right:0px;bottom:0px;" id="renderer_canvas" oncontextmenu="return false;"></canvas>
