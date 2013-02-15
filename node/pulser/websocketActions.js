@@ -22,7 +22,9 @@ function startServer(httpServer)
   {
     // listen to msgServer
     var msgServerNotifier = new net.Socket();
-    msgServerNotifier.connect(chatserver.getPort(), "localhost", function(){msgServerNotifier.write("/nick anon"+webClient.id+"\n/join webclient\n")});
+    msgServerNotifier.connect(chatserver.getPort(), "localhost", function(){
+      msgServerNotifier.write("/nick anon"+webClient.id+"\n/join webclient\n");
+    });
     webClient.nick = "anon"+webClient.id;
     msgServerNotifier.setEncoding('ascii');
     msgServerNotifier.on("data", function(data) {
@@ -72,6 +74,16 @@ args[0] = "graphicsforge";
           envVars.pivotx = args[4];
           envVars.pivoty = args[5];
           envVars.pivotz = args[6];
+        }
+        else if ( args[1]=="decimate" )
+        {
+          script = 'decimate.py';
+          envVars.verts = args[2];
+        }
+        else if ( args[1]=="wireframe" )
+        {
+          script = 'wireframe.py';
+          envVars.thickness = args[2];
         }
 
         // apply our modifier

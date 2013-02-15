@@ -48,7 +48,8 @@ module.exports = {
       if ( options.chatServer!=undefined )
       {
         options.chatServer.write( '/updatemodel preview '+outputJSON+"\n", options.nick  );
-        options.chatServer.write( '/modstatus '+options.slot+' status 100%', options.nick  )
+        options.chatServer.write( '/modstatus '+options.slot+' status 100%\n', options.nick  )
+        options.chatServer.write( '/outputurl '+outputSTL+'\n', options.nick  )
       }
       if ( options.inputFile!=undefined )
         fs.unlink(options.inputFile);

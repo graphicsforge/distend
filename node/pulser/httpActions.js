@@ -24,7 +24,7 @@ function sendAppPage(req, res, access_token)
   var output = ""+
     "<meta http-equiv=\"X-UA-Compatible\" content=\"chrome=1\">"+
     "<meta name=\"viewport\" content=\"width=device-width; initial-scale=1.0; maximum-scale=1.0;\">"+
-    "\n<title>BlRender</title>"+
+    "\n<title>Pulser</title>"+
     "\n<script src=\"/socket.io/socket.io.js\"></script>"+
     "\n<script key=\"miscUtils\" src=\"classes/UIManager.js\"></script>"+
     "\n<script key=\"socketUtils\" src=\"classes/SocketIOManager.js\"></script>"+

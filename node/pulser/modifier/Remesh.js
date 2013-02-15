@@ -31,7 +31,7 @@ Remesh.prototype.drawControls = function()
   this.octree.setAttribute('id', this.uid+'_octree');
   this.octree.setAttribute('type', 'range');
   this.octree.setAttribute('min', '1');
-  this.octree.setAttribute('max', '7');
+  this.octree.setAttribute('max', '6');
   this.octree.setAttribute('value', '4');
   this.octree.setAttribute('onchange', 'Modifier.changed("'+this.uid+'")');
   this.octree.setAttribute('onmouseup', 'Modifier.apply("'+this.uid+'")');

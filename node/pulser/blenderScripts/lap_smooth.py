@@ -9,13 +9,14 @@ output_filename = os.environ['outputstl']
 json = os.environ['json']
 factor = float(os.environ['factor'])
 
+print('status 2%')
 bpy.ops.import_mesh.stl(filepath=base_filename)
 model=bpy.data.objects[0]
 bpy.ops.object.select_all(action='DESELECT')
 bpy.context.scene.objects.active=model
 mod = bpy.ops.object.modifier_add(type='LAPLACIANSMOOTH')
+model.modifiers[0].iterations = 1
 model.modifiers[0].lambda_factor = factor
-model.modifiers[0].iterations = 8
 #bpy.ops.object.modifier_apply(apply_as='DATA', modifier=model.modifiers[0].name)
 print('status 20%')
 model.select=True

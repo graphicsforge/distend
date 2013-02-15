@@ -18,6 +18,7 @@ LapSmooth.prototype.drawControls = function()
   this.factor.setAttribute('min', '-100');
   this.factor.setAttribute('max', '100');
   this.factor.setAttribute('value', '0');
+  this.factor.setAttribute('steps', '0.1');
   this.factor.setAttribute('onchange', 'Modifier.changed("'+this.uid+'")');
   this.factor.setAttribute('onmouseup', 'Modifier.apply("'+this.uid+'")');
   controls.appendChild(this.factor);

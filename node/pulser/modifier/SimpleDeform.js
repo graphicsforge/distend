@@ -34,9 +34,9 @@ SimpleDeform.prototype.drawControls = function()
   this.factor = document.createElement('input');
   this.factor.setAttribute('id', this.uid+'_factor');
   this.factor.setAttribute('type', 'range');
-  this.factor.setAttribute('min', '-10');
-  this.factor.setAttribute('max', '10');
-  this.factor.setAttribute('step', '0.1');
+  this.factor.setAttribute('min', '-2');
+  this.factor.setAttribute('max', '2');
+  this.factor.setAttribute('step', '0.05');
   this.factor.setAttribute('value', '0');
   this.factor.setAttribute('onchange', 'Modifier.changed("'+this.uid+'")');
   this.factor.setAttribute('onmouseup', 'Modifier.apply("'+this.uid+'")');
@@ -81,7 +81,7 @@ SimpleDeform.prototype.onapply = function() {
   document.getElementById('console').innerHTML = 'SimpleDeforming...<br>';
   var mode = this.mode.childNodes[document.getElementById(this.mode.getAttribute('id')).selectedIndex].value;
   var factor = document.getElementById(this.factor.getAttribute('id')).value;
-  factor = parseInt(factor);
+  factor = parseFloat(factor);
   var pivot = document.getElementById(this.pivot.getAttribute('id'));
   socketIOManager.sendMessage('/modifier '+this.index+' simple_deform '+mode+' '+factor+' '+pivot.childNodes[0].value+' '+pivot.childNodes[1].value+' '+pivot.childNodes[2].value);
 }
