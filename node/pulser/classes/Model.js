@@ -1,5 +1,5 @@
 
-function Model( gl, url, callback )
+function Model( gl, url, callback, progresscallback )
 {
   var xhr = new XMLHttpRequest();
   xhr.open("GET", url, true);
@@ -7,6 +7,10 @@ function Model( gl, url, callback )
   this.gl = gl;
 
   var self = this;
+  xhr.onprogress = function(event) {
+    if ( event.lengthComputable && typeof(progresscallback)=='function' )
+      progresscallback(event.loaded / event.total)
+  };
   xhr.onreadystatechange=function() {
     if (xhr.readyState==4) {
       if ( xhr.status==200 ) {

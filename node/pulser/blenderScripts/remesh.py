@@ -9,7 +9,6 @@ output_filename = os.environ['outputstl']
 json = os.environ['json']
 octree = float(os.environ['octree'])
 
-print('deforming')
 bpy.ops.import_mesh.stl(filepath=base_filename)
 model=bpy.data.objects[0]
 bpy.ops.object.select_all(action='DESELECT')

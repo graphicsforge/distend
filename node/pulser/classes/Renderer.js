@@ -8,10 +8,10 @@
     this.sceneObjects = [];
   }
 
-  Renderer.prototype.setModel = function(index, filename)
+  Renderer.prototype.setModel = function(index, filename, progresscallback)
   {
     var self = this;
-    this.sceneObjects[0] = new Model(this.gl, filename, function(){self.dirty=true;});
+    this.sceneObjects[0] = new Model(this.gl, filename, function(){self.dirty=true;}, progresscallback);
   }
 
   function getShader( gl, id )

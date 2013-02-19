@@ -99,13 +99,18 @@ socketIOManager.sendMessage('/nick '+chatServerNick);
 
 socketIOManager.addListener('outputurl', function(data){
   document.getElementById('downloadLink').innerHTML="<a target='_blank' style='font-weight:bold' href='"+data.join('%20')+"'>Download</a>";
-  document.getElementById('upload_button').style.display = 'block';
 });
 
 socketIOManager.addListener('updatemodel', function(data){
   var model = data[0];
   var filename = data[1];
-  renderer.setModel(model, filename);
+  renderer.setModel(model, filename, function(ratio){
+    var progress = document.getElementById('downloadModelProgress');
+    if ( ratio<1 )
+      progress.innerHTML = "Loading 3D model: "+(Math.round(ratio*100))+"%";
+    else
+      progress.innerHTML = "";
+  });
 });
 
 // init renderer
@@ -127,6 +132,29 @@ function chatKeyUp(event, element)
   }
 }
 
+renderer.addListener('initgl', function() {
+  var havePointerLock = 'pointerLockElement' in document ||
+      'mozPointerLockElement' in document ||
+      'webkitPointerLockElement' in document;
+  if ( !havePointerLock )
+    return;
+  var canvas = document.getElementById('preview_canvas');
+  canvas.addEventListener('mousedown', function() {
+    this.requestPointerLock = this.requestPointerLock ||
+             this.mozRequestPointerLock ||
+             this.webkitRequestPointerLock;
+    this.requestPointerLock();
+    uiManager.pointerLock = true;
+  });
+  // Ask the browser to release the pointer
+  document.exitPointerLock = document.exitPointerLock ||
+           document.mozExitPointerLock ||
+           document.webkitExitPointerLock;
+  uiManager.addEventListener('mouseup', function() {
+    document.exitPointerLock();
+    uiManager.pointerLock = false;
+  });
+});
 </script>
 
 
@@ -146,5 +174,6 @@ function chatKeyUp(event, element)
 </div>
 
 <div id="console" style="position:absolute;z-index:-1;right:0px;width:59%;"></div>
+<div id="downloadModelProgress" style="position:absolute;right:10px;top:10px;color:#f00;"></div>
 <div id="downloadLink" style="position:absolute;right:10px;bottom:50px;"></div>
 <input type="text" style="position:absolute;left:40%;bottom:10px;width:59%;" onkeyup="chatKeyUp(event, this);"/>

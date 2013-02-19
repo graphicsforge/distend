@@ -20,6 +20,11 @@ function Camera(vfov)
       self.extrinsic.translate( 0, 0, scale );
     });
     uiManager.addListener('mousemove', function(event) {
+      // if we've ever seen pointerLock, demand it
+      if ( uiManager.pointerLock )
+        self.seenPointerLock = true;
+      if ( !uiManager.pointerLock && self.seenPointerLock )
+        return;
       // odd but where selectors look like a move
       if ( event.target.tagName=="HTML" )
         return;
@@ -29,12 +34,12 @@ function Camera(vfov)
         if ( uiManager.mouseButton[0] )
         {
           var scale = 0.005;
-          self.extrinsic.translate( scale*(uiManager.mousePos[0]-uiManager.mousePrev[0]), -scale*(uiManager.mousePos[1]-uiManager.mousePrev[1]), 0 );
+          self.extrinsic.translate( scale*(uiManager.mouseDiff[0]), -scale*(uiManager.mouseDiff[1]), 0 );
         }
         else if ( uiManager.mouseButton[2] )
         {
           var scale = 0.01;
-          self.extrinsic.translate( 0, 0, -scale*(uiManager.mousePos[1]-uiManager.mousePrev[1]) );
+          self.extrinsic.translate( 0, 0, -scale*(uiManager.mouseDiff[1]) );
         }
       }
       // alt for rotate
@@ -43,12 +48,12 @@ function Camera(vfov)
         var scale = -0.2;
         if ( uiManager.mouseButton[0] )
         {
-          var rotation = [scale*(uiManager.mousePos[1]-uiManager.mousePrev[1]), scale*(uiManager.mousePos[0]-uiManager.mousePrev[0]), 0];
+          var rotation = [scale*(uiManager.mouseDiff[1]), scale*(uiManager.mouseDiff[0]), 0];
           self.rotate( rotation );
         }
         else if ( uiManager.mouseButton[2] )
         {
-          var rotation = [0, 0, scale*(uiManager.mousePos[0]-uiManager.mousePrev[0])];
+          var rotation = [0, 0, scale*(uiManager.mouseDiff[0])];
           self.rotate( rotation );
         }
       }
@@ -61,11 +66,11 @@ function Camera(vfov)
           self.updateInfo();
           var cameraUp = self.info['up'];
           var rotationmat = new CanvasMatrix4();
-          rotationmat.rotate( scale*(uiManager.mousePos[0]-uiManager.mousePrev[0]), cameraUp[0], cameraUp[1], cameraUp[2] );
+          rotationmat.rotate( scale*(uiManager.mouseDiff[0]), cameraUp[0], cameraUp[1], cameraUp[2] );
           self.extrinsic.multLeft(rotationmat);
           var cameraRight = HomoVect.cross( self.info['up'], self.info['position'] );
           rotationmat.makeIdentity();
-          rotationmat.rotate( scale*(uiManager.mousePos[1]-uiManager.mousePrev[1]), cameraRight[0], cameraRight[1], cameraRight[2] );
+          rotationmat.rotate( scale*(uiManager.mouseDiff[1]), cameraRight[0], cameraRight[1], cameraRight[2] );
           self.extrinsic.multLeft(rotationmat);
         }
       }

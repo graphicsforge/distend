@@ -100,6 +100,8 @@ Modifier.apply = function(uid)
   var progressBar = document.getElementById(self.progressBar.getAttribute('id'));
   progressBar.innerHTML = 'starting';
   document.getElementById(self.applyButton.id).style.display="none";
+  for ( var i=self.index+1; i<modifierList.modifiers.length; i++ )
+    Modifier.changed(modifierList.modifiers[i].uid)
 }
 
 // static helper to call changed
@@ -113,8 +115,6 @@ Modifier.changed = function(uid)
   progressBar.innerHTML = '';
   document.getElementById(self.applyButton.id).style.display="block";
 }
-
-
 
 // have a way of referencing specific modifiers on the client
 if ( typeof(IdGenerator)=='undefined' )
@@ -161,11 +161,18 @@ ModifierList.prototype.getById = function(uid)
 }
 ModifierList.prototype.remove = function(uid)
 {
-  for ( var i=0; i<this.modifiers.length; i++ )
+  var i;
+  for ( i=0; i<this.modifiers.length; i++ )
     if ( uid==this.modifiers[i].uid )
     {
       this.modifiers.splice(i,1);
       break;
     }
+  for ( var ii=i; ii<this.modifiers.length; ii++ )
+  {
+    Modifier.changed(this.modifiers[ii].uid)
+    this.modifiers[ii].index = ii;
+  }
+
   this.refresh();
 }

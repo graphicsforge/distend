@@ -5,12 +5,13 @@
     this.listeners = []; // hash by type of function arrays
   }
   EventEmitter.prototype.addListener = function( eventType, functionPointer ) {
-    if ( typeof functionPointer != "function" )
+    if ( typeof(functionPointer) != "function" )
       return;
     if ( this.listeners[eventType] == undefined )
       this.listeners[eventType] = [];
     this.listeners[eventType].push(functionPointer);
   }
+  EventEmitter.prototype.addEventListener = EventEmitter.prototype.addListener;
   EventEmitter.prototype.removeListener = function( eventType, functionPointer ) {
     if ( this.listeners[eventType] == undefined )
       return;
@@ -21,6 +22,7 @@
       }
     }
   }
+  EventEmitter.prototype.removeEventListener = EventEmitter.prototype.removeListener;
   EventEmitter.prototype.emit = function( event, data ) {
     if ( typeof( event ) == "string" )
       var eventType = event;
@@ -37,9 +39,7 @@
     if ( data==undefined )
       data = event;
     for (var i=0; i<this.listeners[eventType].length; i++)
-      try {
-        this.listeners[eventType][i]( data );
-      } catch ( error ) { console.error( error.message ) }
+      this.listeners[eventType][i]( data );
   }
 
   UIManager.prototype = new EventEmitter;
@@ -52,7 +52,9 @@
     this.mousePos = [0, 0];
     this.mousePrev = [0, 0];
     this.mouseDownPos = [0, 0];
+    this.mouseDiff = [0, 0];
     this.mouseLastClickTime = new Date();
+    this.pointerLock = false;
   }
   UIManager.prototype.mouseUp = function(event) {
     this.mouseButton[event.button] = false;
@@ -72,6 +74,23 @@
     this.mousePrev = this.mousePos.slice();
     this.mousePos[0] = event.clientX;
     this.mousePos[1] = event.clientY;
+console.log(this.pointerLock);
+    if ( this.pointerLock )
+    {
+      this.mouseDiff[0] = event.movementX ||
+              event.mozMovementX ||
+              event.webkitMovementX ||
+              0;
+      this.mouseDiff[1] = event.movementY ||
+              event.mozMovementY ||
+              event.webkitMovementY ||
+              0;
+    }
+    else
+    {
+      this.mouseDiff[0] = uiManager.mousePos[0]-uiManager.mousePrev[0];
+      this.mouseDiff[1] = uiManager.mousePos[1]-uiManager.mousePrev[1];
+    }
     this.emit( event );
   }
   UIManager.prototype.keyUp = function(event) {

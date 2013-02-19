@@ -115,8 +115,6 @@ console.log('parse upload form '+fields['nick']);
           });
       });
     }
-
-
   });
 }
 
@@ -141,6 +139,11 @@ function startServer()
       handleUpload(req, res);
       return;
     }
+    if (req.url == '/api') {
+      // TODO do this
+      handleUpload(req, res);
+      return;
+    }
     // otherwise see if this is a resource request
     req.url = decodeURI(req.url);
     fs.exists(PATH+req.url, function(exists) {  
@@ -150,12 +153,18 @@ function startServer()
         return;
       }
       try {
-        var fileStream = fs.createReadStream(PATH+req.url, {start:0});
-        fileStream.on("data", function(data) {
-          res.write(data, 'binary');
-        });
-        fileStream.on("end", function() {
-          res.end();
+        fs.stat(PATH+req.url, function( error, stat ) {
+          if ( error ) { throw error; }
+          res.writeHead(200, {
+            'Content-Length' : stat.size
+          });
+          var fileStream = fs.createReadStream(PATH+req.url, {start:0});
+          fileStream.on("data", function(data) {
+            res.write(data, 'binary');
+          });
+          fileStream.on("end", function() {
+            res.end();
+          });
         });
       } catch ( error ) { res.end(error) }
     });
