@@ -5,7 +5,6 @@ function Wireframe()
 {
   this.uid = 'Modifier'+IdGenerator.getNext();  // get a unique identifier
   this.name = 'Wireframe Model';
-  this.shadowColor = '#00ffff';
 }
 
 Wireframe.prototype.drawControls = function()

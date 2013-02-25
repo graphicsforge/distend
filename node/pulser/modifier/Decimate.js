@@ -4,7 +4,6 @@ function Decimate()
 {
   this.uid = 'Modifier'+IdGenerator.getNext();  // get a unique identifier
   this.name = 'Decimate Model';
-  this.shadowColor = '#00ffff';
 }
 
 Decimate.prototype.drawControls = function()

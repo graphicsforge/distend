@@ -74,7 +74,6 @@
     this.mousePrev = this.mousePos.slice();
     this.mousePos[0] = event.clientX;
     this.mousePos[1] = event.clientY;
-console.log(this.pointerLock);
     if ( this.pointerLock )
     {
       this.mouseDiff[0] = event.movementX ||

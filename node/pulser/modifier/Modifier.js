@@ -7,12 +7,13 @@ function Modifier()
   // these get overridden by child classes
   this.name = 'Unknown Modifier';
   this.backgroundColor = '#fff';
-  this.shadowColor = '#a00000';
+  this.shadowColor = '#00ffff';
+  this.type = 'generic';
+  this.consoleOutput = '';
 }
 
 Modifier.prototype.drawApply = function()
 {
-  // TODO clean this up
   this.applyButton = document.createElement('input');
   this.applyButton.setAttribute('id', this.uid+'_submit_button');
   this.applyButton.setAttribute('type', 'button');
@@ -20,6 +21,38 @@ Modifier.prototype.drawApply = function()
   this.applyButton.setAttribute('onclick', 'Modifier.apply("'+this.uid+'")');
   this.applyButton.style.display='none';
   return this.applyButton;
+}
+
+Modifier.prototype.populateSelectSlot = function(element)
+{
+  element.innerHTML = '';
+  for ( var i=0; i<this.index; i++ )
+  {
+    var option = document.createElement('option');
+    option.value = i;
+    option.innerHTML = i+": "+modifierList.modifiers[i].name;
+    element.appendChild(option);
+  }
+}
+Modifier.prototype.drawSelectSlots = function()
+{
+  if ( this.selectSlot1==undefined )
+  {
+    var clear = document.createElement('div');
+    clear.style.clear = 'both';
+    this.element.appendChild(clear);
+    this.selectSlot1 = document.createElement('select');
+    this.selectSlot1.setAttribute('id', this.uid+'_select_slot_1');
+    this.element.appendChild(this.selectSlot1);
+  }
+  this.populateSelectSlot(this.selectSlot1);
+  if ( this.selectSlot2==undefined )
+  {
+    this.selectSlot2 = document.createElement('select');
+    this.selectSlot2.setAttribute('id', this.uid+'_select_slot_2');
+    this.element.appendChild(this.selectSlot2);
+  }
+  this.populateSelectSlot(this.selectSlot2);
 }
 
 // return an HTML element, using the provided one if existing
@@ -63,6 +96,16 @@ Modifier.prototype.draw = function(element)
     this.progressBar.setAttribute('class', 'progress_bar');
     this.progressBar.setAttribute('id', this.uid+'_progress_bar');
     this.element.appendChild(this.progressBar);
+    // add debug controls
+    var showInfo = document.createElement('div');
+    showInfo.setAttribute('class', 'show_info');
+    showInfo.setAttribute('onclick', 'Modifier.showConsole(\''+this.uid+'\')');
+    showInfo.innerHTML = 'show info';
+    this.element.appendChild(showInfo);
+    if ( this.type=='combine' )
+    {
+      this.drawSelectSlots();
+    }
     // add controls
     if ( typeof(this.drawControls)=='function' )
     {
@@ -72,9 +115,7 @@ Modifier.prototype.draw = function(element)
     }
     // add the apply button
     if ( typeof(this.drawApply)=='function' )
-    {
       this.element.appendChild(this.drawApply());
-    }
   }
   return this.element;
 }
@@ -87,7 +128,7 @@ Modifier.prototype.onmessage = function(messageArray)
     progressBar.innerHTML = messageArray.slice(1).join(' ');
     return;
   }
-  document.getElementById('console').innerHTML+=messageArray.join(' ')+'<br/>';
+  this.consoleOutput += messageArray.join(' ')+'<br/>';
 }
 
 // static helper function that calls the specific apply
@@ -95,6 +136,8 @@ Modifier.apply = function(uid)
 {
   // grab our modifier
   var self = modifierList.getById(uid);
+  // reset our console
+  self.consoleOutput= '';
   if ( typeof(self.onapply)=='function' )
     self.onapply();
   var progressBar = document.getElementById(self.progressBar.getAttribute('id'));
@@ -114,6 +157,17 @@ Modifier.changed = function(uid)
   var progressBar = document.getElementById(self.progressBar.getAttribute('id'));
   progressBar.innerHTML = '';
   document.getElementById(self.applyButton.id).style.display="block";
+}
+
+// static helper to show console output
+Modifier.showConsole = function(uid)
+{
+  var self = modifierList.getById(uid);
+  var output = document.createElement('div');
+  output.innerHTML = self.consoleOutput;
+  if ( output.innerHTML=='' )
+    output.innerHTML = 'no debug captured';
+  document.getElementById('console').appendChild(output);
 }
 
 // have a way of referencing specific modifiers on the client

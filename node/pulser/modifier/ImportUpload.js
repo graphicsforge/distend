@@ -5,6 +5,7 @@ function ImportUpload()
   this.uid = 'Modifier'+IdGenerator.getNext();  // get a unique identifier
   this.name = 'Upload Model';
   this.shadowColor = '#00ff00';
+  this.type = 'import';
 }
 
 ImportUpload.prototype.drawApply = function()

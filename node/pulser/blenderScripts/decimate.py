@@ -15,14 +15,14 @@ bpy.ops.object.select_all(action='DESELECT')
 bpy.context.scene.objects.active=model
 mod = bpy.ops.object.modifier_add(type='DECIMATE')
 # see what ratio we need to decimate by
-me = model.to_mesh(bpy.context.scene, True, 'PREVIEW')
-ratio = verts/len(me.vertices)
+ratio = verts/len(model.data.vertices)
 if ratio>1:
   ratio = 1
 print('decimating with mode collapse, ratio %.4f' % ratio)
 model.modifiers[0].decimate_type = 'COLLAPSE'
 model.modifiers[0].ratio = ratio
-#bpy.ops.object.modifier_apply(apply_as='DATA', modifier=model.modifiers[0].name)
+bpy.ops.object.modifier_apply(apply_as='DATA', modifier=model.modifiers[0].name)
+print('%d output verts' % len(model.data.vertices))
 print('status 20%')
 model.select=True
 bpy.ops.export_mesh.stl(filepath=output_filename)

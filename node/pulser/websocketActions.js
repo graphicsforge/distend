@@ -39,7 +39,7 @@ function startServer(httpServer)
       {
         if ( args[0]==undefined || args[0]=='' )
           args[0] = webClient.nick;
-args[0] = "graphicsforge";
+        args[0] = args[0].replace(/[^a-zA-Z0-9-_+@\[\]]/g, '');
         msgServerNotifier.write("/nick "+args[0]+"\n");
         webClient.nick = args[0];
         webClient.emit('message', '/nick '+args[0]);
@@ -84,6 +84,13 @@ args[0] = "graphicsforge";
         {
           script = 'wireframe.py';
           envVars.thickness = args[2];
+        }
+        else if ( args[1]=="boolean" )
+        {
+          script = 'boolean.py';
+          envVars.operation = args[2].toUpperCase();
+          envVars.slot1 = args[3];
+          envVars.slot2 = args[4];
         }
 
         // apply our modifier

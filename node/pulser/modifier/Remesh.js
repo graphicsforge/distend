@@ -4,7 +4,6 @@ function Remesh()
 {
   this.uid = 'Modifier'+IdGenerator.getNext();  // get a unique identifier
   this.name = 'Remesh Model';
-  this.shadowColor = '#00ffff';
 }
 
 Remesh.prototype.drawControls = function()

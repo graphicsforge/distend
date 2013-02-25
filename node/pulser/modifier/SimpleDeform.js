@@ -5,7 +5,6 @@ function SimpleDeform()
 {
   this.uid = 'Modifier'+IdGenerator.getNext();  // get a unique identifier
   this.name = 'Simple Deform';
-  this.shadowColor = '#00ffff';
 }
 
 SimpleDeform.prototype.drawControls = function()

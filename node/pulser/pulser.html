@@ -16,6 +16,7 @@
 <script type="text/javascript" src="modifier/LapSmooth.js"></script>
 <script type="text/javascript" src="modifier/SimpleDeform.js"></script>
 <script type="text/javascript" src="modifier/Wireframe.js"></script>
+<script type="text/javascript" src="modifier/Boolean.js"></script>
 
 <style type="text/css">
 .modifier {
@@ -24,6 +25,7 @@
   padding:5px;
   margin:5px;
   color:#000;
+  position: relative;
   box-shadow:inset 0px 0px 20px;
   transition: all 0.5s;
   -moz-transition: all 0.5s;
@@ -69,11 +71,29 @@
 .modifier[slimview="1"] .controls {
   max-height: 0px;
 }
+.modifier .show_info {
+  opacity: 0;
+  font-size: 10px;
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+}
+.modifier:hover .show_info {
+  opacity: 1;
+}
+#console {
+  position: absolute;
+  bottom: 40px;
+  color: #0f0;
+}
+#console .username {
+  color: #fff;
+}
 </style>
 
 <script>
 if( typeof(chatServerNick)=='undefined' )
-  var chatServerNick = '';
+  var chatServerNick = prompt('enter your desired nickname').toLowerCase();
 var modifierList = new ModifierList();
 
 // listen to debug and progress from blender
@@ -85,17 +105,27 @@ socketIOManager.addListener('modstatus', function(data){
     modifierList.modifiers[index].onmessage(messageArray);
 });
 socketIOManager.addListener('nick', function(data){
-  console.log('got nick '+data);
-  chatServerNick = data;
-  modifierList.setTarget( document.getElementById('modifiers') );
+  var nick = data.join(' ');
+  if ( typeof(chatServerNick)!='undefined' && chatServerNick!=nick )
+  {
+    socketIOManager.sendMessage('/nick '+chatServerNick);
+    return;
+  }
+  chatServerNick = nick;
 });
 socketIOManager.addListener('message', function(data){
   var msg = document.createElement('div');
-  msg.innerHTML = data;
+  var tokens = data.split(':');
+  if ( tokens.length>1 )
+    msg.innerHTML = "<span class='username'>"+tokens[0]+"</span> "+tokens.slice(1).join(':');
+  else
+    msg.innerHTML = tokens[0];
   document.getElementById('console').appendChild(msg);
 });
-// TODO: this should be some real username
-socketIOManager.sendMessage('/nick '+chatServerNick);
+// this sets your nick on the server
+socketIOManager.addListener('connect', function() {
+  socketIOManager.sendMessage('/nick '+chatServerNick);
+});
 
 socketIOManager.addListener('outputurl', function(data){
   document.getElementById('downloadLink').innerHTML="<a target='_blank' style='font-weight:bold' href='"+data.join('%20')+"'>Download</a>";
@@ -132,28 +162,35 @@ function chatKeyUp(event, element)
   }
 }
 
+// init with everything else
 renderer.addListener('initgl', function() {
+  socketIOManager.sendMessage('/nick '+chatServerNick);
+  // see if we can pointer lock
   var havePointerLock = 'pointerLockElement' in document ||
       'mozPointerLockElement' in document ||
       'webkitPointerLockElement' in document;
-  if ( !havePointerLock )
-    return;
-  var canvas = document.getElementById('preview_canvas');
-  canvas.addEventListener('mousedown', function() {
-    this.requestPointerLock = this.requestPointerLock ||
-             this.mozRequestPointerLock ||
-             this.webkitRequestPointerLock;
-    this.requestPointerLock();
-    uiManager.pointerLock = true;
-  });
-  // Ask the browser to release the pointer
-  document.exitPointerLock = document.exitPointerLock ||
-           document.mozExitPointerLock ||
-           document.webkitExitPointerLock;
-  uiManager.addEventListener('mouseup', function() {
-    document.exitPointerLock();
-    uiManager.pointerLock = false;
-  });
+  if ( havePointerLock )
+  {
+    var canvas = document.getElementById('preview_canvas');
+    canvas.addEventListener('mousedown', function() {
+      this.requestPointerLock = this.requestPointerLock ||
+               this.mozRequestPointerLock ||
+               this.webkitRequestPointerLock;
+      // TODO enable once pointer lock works
+      //this.requestPointerLock();
+      uiManager.pointerLock = true;
+    });
+    // Ask the browser to release the pointer
+    document.exitPointerLock = document.exitPointerLock ||
+             document.mozExitPointerLock ||
+             document.webkitExitPointerLock;
+    uiManager.addEventListener('mouseup', function() {
+      //document.exitPointerLock();
+      uiManager.pointerLock = false;
+    });
+  }
+  // set up modifiers
+  modifierList.setTarget( document.getElementById('modifiers') );
 });
 </script>
 
@@ -170,10 +207,13 @@ renderer.addListener('initgl', function() {
     <option value="LapSmooth">laplacian smooth</option>
     <option value="SimpleDeform">simple deform</option>
     <option value="Wireframe">wireframe</option>
+    <option value="Boolean">boolean</option>
   </select>
 </div>
 
-<div id="console" style="position:absolute;z-index:-1;right:0px;width:59%;"></div>
+<div style="position:absolute;z-index:-1;right:0px;bottom:0px;width:59%;height:90%">
+  <div id="console"></div>
+</div>
 <div id="downloadModelProgress" style="position:absolute;right:10px;top:10px;color:#f00;"></div>
 <div id="downloadLink" style="position:absolute;right:10px;bottom:50px;"></div>
 <input type="text" style="position:absolute;left:40%;bottom:10px;width:59%;" onkeyup="chatKeyUp(event, this);"/>

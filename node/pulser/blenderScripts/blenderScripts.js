@@ -16,7 +16,7 @@ module.exports = {
       options.slot = 0;
     if ( options.webPath==undefined )
       options.webPath = '';
-
+    // TODO clean all this trash up
     var outputJSON = 'output/'+options.nick+'.json';
     var outputSTL = 'input/'+options.nick+'_'+options.slot+'.stl';
     var inputSTL = 'input/'+options.nick+'_'+(options.slot-1)+'.stl';
@@ -25,9 +25,12 @@ module.exports = {
     envars.basestl = '';
     // see if we had a file in our previous slot
     if ( fs.existsSync(options.webPath+'/'+inputSTL) )
-    {
       envars.basestl = options.webPath+'/'+inputSTL;
-    };
+    // if we have a slot, set the paths
+    if ( envars.slot1!=undefined )
+      envars.slot1 = options.webPath+'/'+'input/'+options.nick+'_'+envars.slot1+'.stl';
+    if ( envars.slot2!=undefined )
+      envars.slot2 = options.webPath+'/'+'input/'+options.nick+'_'+envars.slot2+'.stl';
     envars.json = options.webPath+'/'+outputJSON;
     // print debug info
     var envarString = ""
@@ -38,11 +41,19 @@ module.exports = {
     blender = spawn('./blender',['-b',scriptPath+'blank.blend', '-P',scriptPath+script], { env: envars });
     blender.stdout.on('data', function(data){
       if ( options.chatServer!=undefined )
-        options.chatServer.write( '/modstatus '+options.slot+' '+data.toString(), options.nick  )
+      {
+        var message = data.toString().split(/[\n\r]/);
+        for ( var i=0; i<message.length; i++ )
+          options.chatServer.write( '/modstatus '+options.slot+' '+message[i]+'\n', options.nick  )
+      }
     });
     blender.stderr.on('data', function(data){
       if ( options.chatServer!=undefined )
-        options.chatServer.write( data.toString(), options.nick  )
+      {
+        var message = data.toString().split(/[\n\r]/);
+        for ( var i=0; i<message.length; i++ )
+          options.chatServer.write( '/modstatus '+options.slot+' '+message[i]+'\n', options.nick  )
+      }
     });
     blender.on('exit', function(code, signal){
       if ( options.chatServer!=undefined )

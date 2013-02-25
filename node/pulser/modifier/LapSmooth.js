@@ -4,7 +4,6 @@ function LapSmooth()
 {
   this.uid = 'Modifier'+IdGenerator.getNext();  // get a unique identifier
   this.name = 'Lapacian Smooth';
-  this.shadowColor = '#00ffff';
 }
 
 LapSmooth.prototype.drawControls = function()
