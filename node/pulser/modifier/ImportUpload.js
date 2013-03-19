@@ -54,7 +54,6 @@ console.log(formData);
 // static function called from upload button
 ImportUpload.submitForm = function(form, uid) {
   // clear out previous output
-  document.getElementById('console').innerHTML = 'Uploading file...<br>';
   document.getElementById(uid+'_upload_button').style.display = 'none';
   // submit the form
   var formData = new FormData(form);

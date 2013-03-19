@@ -43,6 +43,7 @@ Modifier.prototype.drawSelectSlots = function()
     this.element.appendChild(clear);
     this.selectSlot1 = document.createElement('select');
     this.selectSlot1.setAttribute('id', this.uid+'_select_slot_1');
+    this.selectSlot1.setAttribute('onchange', 'Modifier.changed("'+this.uid+'")');
     this.element.appendChild(this.selectSlot1);
   }
   this.populateSelectSlot(this.selectSlot1);
@@ -136,8 +137,6 @@ Modifier.apply = function(uid)
 {
   // grab our modifier
   var self = modifierList.getById(uid);
-  // reset our console
-  self.consoleOutput= '';
   if ( typeof(self.onapply)=='function' )
     self.onapply();
   var progressBar = document.getElementById(self.progressBar.getAttribute('id'));
@@ -152,6 +151,8 @@ Modifier.changed = function(uid)
 {
   // grab our modifier
   var self = modifierList.getById(uid);
+  // reset our console
+  self.consoleOutput= '';
   if ( typeof(self.onchange)=='function' )
     self.onchange();
   var progressBar = document.getElementById(self.progressBar.getAttribute('id'));

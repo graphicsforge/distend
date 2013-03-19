@@ -29,7 +29,7 @@ LapSmooth.prototype.onapply = function() {
   document.getElementById('console').innerHTML = 'LapSmoothing...<br>';
   var factor = document.getElementById(this.factor.getAttribute('id')).value;
   factor = parseFloat(factor);
-  socketIOManager.sendMessage('/modifier '+this.index+' lap_smooth '+factor);
+  socketIOManager.sendMessage('/modifier '+this.index+' lapSmooth '+factor);
 }
 
 

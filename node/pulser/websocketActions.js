@@ -52,55 +52,35 @@ function startServer(httpServer)
       }
       if ( type=="modifier" )
       {
-        var script = '';
-        var envVars = new Object();
-        // see which script to run
-        if ( args[1]=="remesh" )
-        {
-          script = 'remesh.py';
-          envVars.mode = args[2];
-          envVars.octree = args[3];
-        }
-        else if ( args[1]=="lap_smooth" )
-        {
-          script = 'lap_smooth.py';
-          envVars.factor = args[2];
-        }
-        else if ( args[1]=="simple_deform" )
-        {
-          script = 'simple_deform.py';
-          envVars.mode = args[2];
-          envVars.factor = args[3];
-          envVars.pivotx = args[4];
-          envVars.pivoty = args[5];
-          envVars.pivotz = args[6];
-        }
-        else if ( args[1]=="decimate" )
-        {
-          script = 'decimate.py';
-          envVars.verts = args[2];
-        }
-        else if ( args[1]=="wireframe" )
-        {
-          script = 'wireframe.py';
-          envVars.thickness = args[2];
-        }
-        else if ( args[1]=="boolean" )
-        {
-          script = 'boolean.py';
-          envVars.operation = args[2].toUpperCase();
-          envVars.slot1 = args[3];
-          envVars.slot2 = args[4];
-        }
+        var operations = [];
+        // start off with our load modifier
+        blenderScripts.pushLoadSTLOperation(operations, webClient.nick, args[0]);
+        operations.push( args.slice(1) );
+        blenderScripts.pushExportOperations(operations, webClient.nick, args[0]);
+var scriptWriter = fs.createWriteStream('debug.txt', {flags:'w'});
+blenderScripts.streamScript( scriptWriter, operations );
 
-        // apply our modifier
-        blenderScripts.apply(script, {
-          chatServer: chatserver,
-          webPath:PATH,
-          nick:webClient.nick,
-          slot:args[0],
-        }, envVars );
-
+        blenderScripts.apply(operations, webClient.nick, args[0]);
+      }
+      else if ( type=="combine" )
+      {
+        var operations = [];
+        blenderScripts.pushLoadSTLOperation(operations, webClient.nick, parseInt(args[3])+1);
+        blenderScripts.pushLoadSTLOperation(operations, webClient.nick, parseInt(args[4])+1);
+        var operation = args.slice(2);
+        if ( args[3]<args[4] )
+        {
+          operation[1] = "bpy.data.objects[0]";
+          operation[2] = "bpy.data.objects[1]";
+        } else {
+          operation[1] = "bpy.data.objects[1]";
+          operation[2] = "bpy.data.objects[0]";
+        }
+        operations.push( operation );
+        blenderScripts.pushExportOperations(operations, webClient.nick, args[0]);
+var scriptWriter = fs.createWriteStream('debug.txt', {flags:'w'});
+blenderScripts.streamScript( scriptWriter, operations );
+        blenderScripts.apply(operations, webClient.nick, args[0]);
       }
     }
 
@@ -136,9 +116,11 @@ console.log('msg '+msg);
 module.exports = {
   setBasePath: function( basePath ) {
     PATH = basePath;
+    blenderScripts.setBasePath( PATH );
   },
   setChatServer: function( server ) {
     chatserver = server;
+    blenderScripts.setChatServer( server );
   },
   setDatabase: function( database ) {
     db = database;

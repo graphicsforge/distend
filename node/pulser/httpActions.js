@@ -16,6 +16,7 @@ var HTTP_PORT = 80;
 var httpServer;
 var chatServer;
 
+
 function sendAppPage(req, res, access_token)
 {
   // render main page
@@ -42,7 +43,7 @@ function handleUpload(req, res)
       files = [],
       fields = [];
 
-  form.uploadDir = 'upload';
+  form.uploadDir = 'tmp';
 
   form
     .on('field', function(field, value) {
@@ -70,15 +71,17 @@ console.log('parse upload form '+fields['nick']);
     var extension = files.upload.name.substring(files.upload.name.lastIndexOf('.')+1);
     if ( extension=='stl' )
     {
+        var operations = [];
+        // start off with our load modifier
+        blenderScripts.pushLoadSTLOperation(operations, fields['nick'], fields['slot'], files.upload.path);
+        blenderScripts.pushExportOperations(operations, fields['nick'], fields['slot']);
+var scriptWriter = fs.createWriteStream('debug.txt', {flags:'w'});
+blenderScripts.streamScript( scriptWriter, operations );
+
         res.writeHead(200, {'content-type': 'application/octet-stream'});
         res.end('upload complete');
-        blenderScripts.apply('import_stl.py', {
-          chatServer: chatServer,
-          webPath:PATH,
-          nick:fields['nick'],
-          slot:fields['slot'],
-        },{
-          inputfile:files.upload.path
+        blenderScripts.apply(operations, fields['nick'], fields['slot'], function() {
+          fs.unlink(files.upload.path);
         });
     }
     else if ( extension=='svg' )
@@ -179,12 +182,14 @@ function startServer()
 module.exports = {
   setBasePath: function( basePath ) {
     PATH = basePath;
+    blenderScripts.setBasePath( PATH );
   },
   setPort: function( port ) {
     HTTP_PORT = port;
   },
   setChatServer: function( server ) {
     chatServer = server;
+    blenderScripts.setChatServer( server );
   },
   startServer: startServer,
   getHttpServer: function() { return httpServer; }

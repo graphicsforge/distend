@@ -40,11 +40,10 @@ Remesh.prototype.drawControls = function()
 
 Remesh.prototype.onapply = function() {
   // clear out previous output
-  document.getElementById('console').innerHTML = 'Remeshing...<br>';
   var mode = this.mode.childNodes[document.getElementById(this.mode.getAttribute('id')).selectedIndex].value;
   var octree = document.getElementById(this.octree.getAttribute('id')).value;
   octree = parseInt(octree);
-  socketIOManager.sendMessage('/modifier '+this.index+' remesh '+mode+' '+octree);
+  socketIOManager.sendMessage('/modifier '+this.index+' remesh "'+mode+'" '+octree);
 }
 
 

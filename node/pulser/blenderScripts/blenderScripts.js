@@ -4,68 +4,148 @@ var spawn = require ('child_process').spawn;
 
 var blender = './blender';
 var scriptPath = './pulser/blenderScripts/';
-var path;
-var chatServer;
+var tmpPath = './tmp/';
+var PATH = '';
+var chatServer = undefined;
+
+/*
+cat = spawn('./blender',['-b','pulser/blenderScripts/blank.blend','-P','test']);
+cat.stdout.on('data', function(data){
+  console.log(data.toString());
+});
+cat.stderr.on('data', function(data){
+  console.log(data.toString());
+});
+cat.on('error', function(data){
+  console.log(data);
+});
+cat.on('exit', function(code, signal){
+  console.log('exited');
+});
+
+var blenderpy = fs.createWriteStream('test', {flags:'a'});
+blenderpy.write("print('hello there')");
+blenderpy.end("\nprint('awesome!')");
+*/
+
+streamScript = function( stream, operations )
+{
+  // grab function definitions
+  fs.readFile(scriptPath+'startCode.py', function(err, data) {
+    if (err) {console.log(err);};
+    stream.write(data);
+
+    for ( var i=0; i<operations.length; i++ )
+    {
+      stream.write(operations[i][0]+"(");
+      for ( var j=1; j<operations[i].length; j++ )
+      {
+        if ( j>1 )
+          stream.write(",");
+        stream.write(operations[i][j]);
+      }
+      stream.write(")\n");
+    }
+    stream.end();
+  });
+}
+
+getEnVars = function( options, vars )
+{
+}
+
+pushLoadSTLOperation = function( operations, nick, slot, inputfile )
+{
+  var basefile = '';
+  if ( slot>0 )
+    basefile = PATH+'/input/'+nick+'_'+(slot-1)+'.stl';
+  if ( inputfile!=undefined )
+    operations.push( ['loadSTL', "'"+inputfile+"'", "'"+basefile+"'"] );
+  else
+    operations.push( ['loadSTL', "'"+basefile+"'"] );
+}
+
+pushExportOperations = function( operations, nick, slot )
+{
+  var outputSTL = PATH+'/input/'+nick+'_'+slot+'.stl';
+  var outputJSON = PATH+'/output/'+nick+'.json';
+  operations.push( ['outputModel', "'"+outputSTL+"'"] );
+  operations.push( ['outputVArray', "'"+outputJSON+"'"] );
+}
+
 
 module.exports = {
-  apply: function( script, options, vars )
+  getEnVars: getEnVars,
+  streamScript: streamScript,
+  pushLoadSTLOperation: pushLoadSTLOperation,
+  pushExportOperations: pushExportOperations,
+  setBasePath: function( basePath ) {
+    PATH = basePath;
+  },
+  setChatServer: function( server ) {
+    chatServer = server;
+  },
+  apply: function( script, nick, slot, callback )
   {
-    if ( options.nick==undefined )
-      options.nick = 'anon';
-    if ( options.slot==undefined )
-      options.slot = 0;
-    if ( options.webPath==undefined )
-      options.webPath = '';
-    // TODO clean all this trash up
-    var outputJSON = 'output/'+options.nick+'.json';
-    var outputSTL = 'input/'+options.nick+'_'+options.slot+'.stl';
-    var inputSTL = 'input/'+options.nick+'_'+(options.slot-1)+'.stl';
-    var envars = vars;
-    envars.outputstl = options.webPath+'/'+outputSTL;
-    envars.basestl = '';
-    // see if we had a file in our previous slot
-    if ( fs.existsSync(options.webPath+'/'+inputSTL) )
-      envars.basestl = options.webPath+'/'+inputSTL;
-    // if we have a slot, set the paths
-    if ( envars.slot1!=undefined )
-      envars.slot1 = options.webPath+'/'+'input/'+options.nick+'_'+envars.slot1+'.stl';
-    if ( envars.slot2!=undefined )
-      envars.slot2 = options.webPath+'/'+'input/'+options.nick+'_'+envars.slot2+'.stl';
-    envars.json = options.webPath+'/'+outputJSON;
-    // print debug info
-    var envarString = ""
-    for ( name in envars )
-      envarString+= name+'='+envars[name]+' ';
-    console.log('running: '+envarString+'./blender -P '+scriptPath+script);
-    // do it
-    blender = spawn('./blender',['-b',scriptPath+'blank.blend', '-P',scriptPath+script], { env: envars });
-    blender.stdout.on('data', function(data){
-      if ( options.chatServer!=undefined )
-      {
-        var message = data.toString().split(/[\n\r]/);
-        for ( var i=0; i<message.length; i++ )
-          options.chatServer.write( '/modstatus '+options.slot+' '+message[i]+'\n', options.nick  )
-      }
-    });
-    blender.stderr.on('data', function(data){
-      if ( options.chatServer!=undefined )
-      {
-        var message = data.toString().split(/[\n\r]/);
-        for ( var i=0; i<message.length; i++ )
-          options.chatServer.write( '/modstatus '+options.slot+' '+message[i]+'\n', options.nick  )
-      }
-    });
-    blender.on('exit', function(code, signal){
-      if ( options.chatServer!=undefined )
-      {
-        options.chatServer.write( '/updatemodel preview '+outputJSON+"\n", options.nick  );
-        options.chatServer.write( '/modstatus '+options.slot+' status 100%\n', options.nick  )
-        options.chatServer.write( '/outputurl '+outputSTL+'\n', options.nick  )
-      }
-      if ( options.inputFile!=undefined )
-        fs.unlink(options.inputFile);
+    if ( nick==undefined )
+      nick = 'anon';
+    if ( slot==undefined )
+      slot = 0;
+    var scriptPipe = tmpPath+nick;
+    // kill any previous blenderings
+    var killBlender = spawn( './cleanBlenders.sh', [scriptPipe] );
+    killBlender.on('exit', function(code, signal){
+      // make sure we have a fifo for this
+      var mkfifo = spawn('mkfifo',  [scriptPipe]);
+      mkfifo.on('exit', function (code) {
+        // set up blender call
+        blender = spawn('./blender',['-b',scriptPath+'blank.blend', '-P',scriptPipe]);
+        blender.stdout.on('data', function(data){
+          if ( chatServer!=undefined )
+          {
+            var message = data.toString().split(/[\n\r]/);
+            for ( var i=0; i<message.length; i++ )
+              chatServer.write( '/modstatus '+slot+' '+message[i]+'\n', nick  )
+          }
+        });
+        blender.stderr.on('data', function(data){
+          if ( chatServer!=undefined )
+          {
+            var message = data.toString().split(/[\n\r]/);
+            for ( var i=0; i<message.length; i++ )
+              chatServer.write( '/modstatus '+slot+' '+message[i]+'\n', nick  )
+          }
+        });
+        blender.on('exit', function(code, signal){
+          if ( chatServer!=undefined )
+          {
+            var outputJSON = 'output/'+nick+'.json';
+            var outputSTL = 'input/'+nick+'_'+slot+'.stl';
+            var inputSTL = 'input/'+nick+'_'+(slot-1)+'.stl';
+            chatServer.write( '/updatemodel preview '+outputJSON+"\n", nick  );
+            chatServer.write( '/modstatus '+slot+' status 100%\n', nick  )
+            chatServer.write( '/outputurl '+outputSTL+'\n', nick  )
+          }
+          if ( typeof(callback)=='function' )
+            callback();
+        });
+        // do it
+        var scriptWriter = fs.createWriteStream(scriptPipe, {flags:'a'});
+        try {
+          streamScript(scriptWriter, script);
+        } catch(err) {
+          if ( chatServer!=undefined )
+            chatServer.write( 'error in script', options.nick  );
+          // cleanup after errors
+          if ( typeof(callback)=='function' )
+            callback();
+        }
+
+      }); // mkfifo
+    }); // killBlender
+    killBlender.on('error', function(data){
+      console.log(data);
     });
 
-
-  }  
+  }
 }

@@ -82,7 +82,7 @@ SimpleDeform.prototype.onapply = function() {
   var factor = document.getElementById(this.factor.getAttribute('id')).value;
   factor = parseFloat(factor);
   var pivot = document.getElementById(this.pivot.getAttribute('id'));
-  socketIOManager.sendMessage('/modifier '+this.index+' simple_deform '+mode+' '+factor+' '+pivot.childNodes[0].value+' '+pivot.childNodes[1].value+' '+pivot.childNodes[2].value);
+  socketIOManager.sendMessage('/modifier '+this.index+' simpleDeform "'+mode+'" '+factor+' '+pivot.childNodes[0].value+' '+pivot.childNodes[1].value+' '+pivot.childNodes[2].value);
 }
 
 
