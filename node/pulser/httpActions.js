@@ -5,11 +5,9 @@ var fs = require('fs'); // File System
 var spawn = require ('child_process').spawn;
 var querystring = require('querystring');
 var httpProxy = require('node-http-proxy/lib/node-http-proxy'); // node-http-proxy https://github.com/nodejitsu/node-http-proxy.git 
-// pkginfo git://github.com/indexzero/node-pkginfo.git
 var formidable = require('formidable');
 
 var blenderScripts = require('./blenderScripts/blenderScripts');
-//var thingiverse = require('./thingiverse');
 
 var PATH = ".";
 var HTTP_PORT = 80;
@@ -64,7 +62,6 @@ function handleUpload(req, res)
       console.log('upload attempted without a file');
       return;
     }
-console.log('parse upload form '+fields['nick']);
     if ( fields['slot']==undefined )
       fields['slot'] = 0;
     // extract our extension
@@ -73,10 +70,8 @@ console.log('parse upload form '+fields['nick']);
     {
         var operations = [];
         // start off with our load modifier
-        blenderScripts.pushLoadSTLOperation(operations, fields['nick'], fields['slot'], files.upload.path);
+        blenderScripts.pushLoadSTLOperation(operations, fields['nick'], 0, files.upload.path);
         blenderScripts.pushExportOperations(operations, fields['nick'], fields['slot']);
-var scriptWriter = fs.createWriteStream('debug.txt', {flags:'w'});
-blenderScripts.streamScript( scriptWriter, operations );
 
         res.writeHead(200, {'content-type': 'application/octet-stream'});
         res.end('upload complete');
@@ -121,6 +116,49 @@ blenderScripts.streamScript( scriptWriter, operations );
   });
 }
 
+function handleAPIUpload(req, res)
+{
+  var form = new formidable.IncomingForm();
+
+  form.uploadDir = 'tmp';
+
+  form
+    .on('end', function() {
+      console.log('-> upload done');
+    });
+  try { form.parse(req, function(err, fields, files) {
+      // bail if we didn't get a file
+      if ( !files.file_0 )
+      {
+        res.writeHead(200, {'content-type': 'text/html'});
+        res.end('error: no file_0');
+        return;
+      }
+      var outputFile = files.file_0.path+'_apioutput.stl';
+      var operations = [];
+      // start off with our load modifier
+      operations.push( ['loadSTL', '"'+files.file_0.path+'"'] );
+      operations.push( ['outputModel', '"'+outputFile+'"'] );
+
+      blenderScripts.apply(operations, fields['nick'], fields['slot'], function() {
+        fs.readFile(outputFile, function (err, file) {
+            res.writeHead(200, {
+                'content-type': 'application/octet-stream',
+                'content-disposition': 'attachment; filename=pulsed_'+files.file_0.name});
+            res.end(file);
+            fs.unlink(outputFile);
+        });
+        for ( var name in files )
+          fs.unlink(files[name].path);
+      });
+
+    }); } catch (error) {
+    res.writeHead(200, {'content-type': 'text/html'});
+    res.end("error: "+error.toString());
+  }
+}
+
+
 function startServer()
 {
   console.log("launching http server");
@@ -133,9 +171,9 @@ function startServer()
       return;
     }
     // see if this is an authorization redirect
-    if ( req.url.substr(0,7)=="/?code=" )
+    if ( req.url.substr(0,2)=="/?" )
     {
-      //thingiverse.validateCode(req.url.substr(7), req, res);
+      sendAppPage(req, res, undefined);
       return;
     }
     if (req.url == '/upload') {
@@ -143,8 +181,7 @@ function startServer()
       return;
     }
     if (req.url == '/api') {
-      // TODO do this
-      handleUpload(req, res);
+      handleAPIUpload(req, res);
       return;
     }
     // otherwise see if this is a resource request

@@ -3,7 +3,6 @@ var net = require('net');
 var fs = require('fs');
 var spawn = require ('child_process').spawn;
 var io = require('socket.io'); // socket.io git://github.com/LearnBoost/socket.io.git
-// socket.io-client git://github.com/LearnBoost/socket.io-client.git
 
 var blenderScripts = require('./blenderScripts/blenderScripts');
 
@@ -43,6 +42,8 @@ function startServer(httpServer)
         msgServerNotifier.write("/nick "+args[0]+"\n");
         webClient.nick = args[0];
         webClient.emit('message', '/nick '+args[0]);
+        // TODO see if this is a thingiverse user?
+        //thingiverse.get('users/'+webClient.nick, function(data) {console.log(data); });
         // check to see if we have a model to load
         var filename = 'output/'+args[0]+'.json';
         fs.exists( PATH+'/'+filename, function(exists) {
@@ -57,8 +58,6 @@ function startServer(httpServer)
         blenderScripts.pushLoadSTLOperation(operations, webClient.nick, args[0]);
         operations.push( args.slice(1) );
         blenderScripts.pushExportOperations(operations, webClient.nick, args[0]);
-var scriptWriter = fs.createWriteStream('debug.txt', {flags:'w'});
-blenderScripts.streamScript( scriptWriter, operations );
 
         blenderScripts.apply(operations, webClient.nick, args[0]);
       }
@@ -78,8 +77,6 @@ blenderScripts.streamScript( scriptWriter, operations );
         }
         operations.push( operation );
         blenderScripts.pushExportOperations(operations, webClient.nick, args[0]);
-var scriptWriter = fs.createWriteStream('debug.txt', {flags:'w'});
-blenderScripts.streamScript( scriptWriter, operations );
         blenderScripts.apply(operations, webClient.nick, args[0]);
       }
     }

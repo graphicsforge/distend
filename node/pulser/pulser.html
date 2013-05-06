@@ -93,6 +93,7 @@
 </style>
 
 <script>
+
 if( typeof(chatServerNick)=='undefined' )
   var chatServerNick = prompt('enter your desired nickname').toLowerCase();
 var modifierList = new ModifierList();
@@ -126,6 +127,7 @@ socketIOManager.addListener('message', function(data){
 // this sets your nick on the server
 socketIOManager.addListener('connect', function() {
   socketIOManager.sendMessage('/nick '+chatServerNick);
+  socketIOManager.removeListener('connect', arguments.callee);
 });
 
 socketIOManager.addListener('outputurl', function(data){

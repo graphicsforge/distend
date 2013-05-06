@@ -23,8 +23,6 @@ Decimate.prototype.drawControls = function()
 }
 
 Decimate.prototype.onapply = function() {
-  // clear out previous output
-  document.getElementById('console').innerHTML = 'Decimating...<br>';
   var numVerts = document.getElementById(this.numVerts.getAttribute('id')).value;
   numVerts = parseFloat(numVerts);
   socketIOManager.sendMessage('/modifier '+this.index+' decimate '+numVerts);

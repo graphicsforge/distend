@@ -19,7 +19,8 @@ Modifier.prototype.drawApply = function()
   this.applyButton.setAttribute('type', 'button');
   this.applyButton.setAttribute('value', 'Apply');
   this.applyButton.setAttribute('onclick', 'Modifier.apply("'+this.uid+'")');
-  this.applyButton.style.display='none';
+  if ( !this.noOptions )
+    this.applyButton.style.display='none';
   return this.applyButton;
 }
 
@@ -141,7 +142,8 @@ Modifier.apply = function(uid)
     self.onapply();
   var progressBar = document.getElementById(self.progressBar.getAttribute('id'));
   progressBar.innerHTML = 'starting';
-  document.getElementById(self.applyButton.id).style.display="none";
+  if ( !self.noOptions )
+    document.getElementById(self.applyButton.id).style.display="none";
   for ( var i=self.index+1; i<modifierList.modifiers.length; i++ )
     Modifier.changed(modifierList.modifiers[i].uid)
 }
@@ -152,7 +154,7 @@ Modifier.changed = function(uid)
   // grab our modifier
   var self = modifierList.getById(uid);
   // reset our console
-  self.consoleOutput= '';
+  self.consoleOutput = self.name+':';
   if ( typeof(self.onchange)=='function' )
     self.onchange();
   var progressBar = document.getElementById(self.progressBar.getAttribute('id'));

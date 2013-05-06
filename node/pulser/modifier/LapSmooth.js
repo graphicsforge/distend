@@ -25,8 +25,6 @@ LapSmooth.prototype.drawControls = function()
 }
 
 LapSmooth.prototype.onapply = function() {
-  // clear out previous output
-  document.getElementById('console').innerHTML = 'LapSmoothing...<br>';
   var factor = document.getElementById(this.factor.getAttribute('id')).value;
   factor = parseFloat(factor);
   socketIOManager.sendMessage('/modifier '+this.index+' lapSmooth '+factor);

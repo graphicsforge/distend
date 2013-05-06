@@ -8,26 +8,6 @@ var tmpPath = './tmp/';
 var PATH = '';
 var chatServer = undefined;
 
-/*
-cat = spawn('./blender',['-b','pulser/blenderScripts/blank.blend','-P','test']);
-cat.stdout.on('data', function(data){
-  console.log(data.toString());
-});
-cat.stderr.on('data', function(data){
-  console.log(data.toString());
-});
-cat.on('error', function(data){
-  console.log(data);
-});
-cat.on('exit', function(code, signal){
-  console.log('exited');
-});
-
-var blenderpy = fs.createWriteStream('test', {flags:'a'});
-blenderpy.write("print('hello there')");
-blenderpy.end("\nprint('awesome!')");
-*/
-
 streamScript = function( stream, operations )
 {
   // grab function definitions
@@ -48,10 +28,6 @@ streamScript = function( stream, operations )
     }
     stream.end();
   });
-}
-
-getEnVars = function( options, vars )
-{
 }
 
 pushLoadSTLOperation = function( operations, nick, slot, inputfile )
@@ -75,7 +51,6 @@ pushExportOperations = function( operations, nick, slot )
 
 
 module.exports = {
-  getEnVars: getEnVars,
   streamScript: streamScript,
   pushLoadSTLOperation: pushLoadSTLOperation,
   pushExportOperations: pushExportOperations,
@@ -87,6 +62,9 @@ module.exports = {
   },
   apply: function( script, nick, slot, callback )
   {
+// debug:
+var scriptWriter = fs.createWriteStream('debug.txt', {flags:'w'});
+streamScript( scriptWriter, script );
     if ( nick==undefined )
       nick = 'anon';
     if ( slot==undefined )

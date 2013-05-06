@@ -38,7 +38,6 @@ ImportUpload.prototype.drawControls = function()
 }
 
 ImportUpload.prototype.onapply = function() {
-  document.getElementById('console').innerHTML = 'Uploading file...<br>';
   var form = document.getElementById(this.uploadform.getAttribute('id'));
   // submit the form
 console.log(form);
@@ -53,7 +52,6 @@ console.log(formData);
 
 // static function called from upload button
 ImportUpload.submitForm = function(form, uid) {
-  // clear out previous output
   document.getElementById(uid+'_upload_button').style.display = 'none';
   // submit the form
   var formData = new FormData(form);

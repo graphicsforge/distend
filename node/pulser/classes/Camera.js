@@ -10,6 +10,13 @@ function Camera(vfov)
   this.extrinsic = new CanvasMatrix4();
   this.extrinsic.translate( 0, 0, -5 );
   this.target = [0, 0, 0];
+
+  // initial orientation
+  var rotationmat = new CanvasMatrix4();
+  rotationmat.makeIdentity();
+  rotationmat.rotate( 180, 1, 0, 0 );
+  this.extrinsic.multLeft(rotationmat);
+
   // attempt to apply ui listeners
   if ( typeof(uiManager)!='undefined' )
   {

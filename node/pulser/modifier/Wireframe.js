@@ -26,8 +26,6 @@ Wireframe.prototype.drawControls = function()
 }
 
 Wireframe.prototype.onapply = function() {
-  // clear out previous output
-  document.getElementById('console').innerHTML = 'wireframing...<br>';
   var thickness = document.getElementById(this.thickness.getAttribute('id')).value;
   thickness = parseFloat(thickness);
   socketIOManager.sendMessage('/modifier '+this.index+' wireframe '+thickness);

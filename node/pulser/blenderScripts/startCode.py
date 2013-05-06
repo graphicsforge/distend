@@ -42,6 +42,7 @@ def loadSTL(input_filename, base_filename=''):
     base_stl.select=True
     bpy.context.scene.objects.active=base_stl
     bpy.ops.object.editmode_toggle()
+    bpy.ops.mesh.remove_doubles(threshold=0.1, use_unselected=True)
     bpy.ops.mesh.select_all(action='SELECT');
     bpy.ops.mesh.normals_make_consistent(inside=False)
     bpy.ops.object.editmode_toggle()
@@ -49,14 +50,17 @@ def loadSTL(input_filename, base_filename=''):
   else:
     bpy.ops.import_mesh.stl(filepath=input_filename)
     input_stl=bpy.data.objects[0]
-  # make normals consistent
   bpy.ops.object.select_all(action='DESELECT')
   input_stl.select=True
   bpy.context.scene.objects.active=input_stl
   bpy.ops.object.editmode_toggle()
   bpy.ops.mesh.select_all(action='SELECT');
+  # remove doubles
+  bpy.ops.mesh.remove_doubles(threshold=0.1, use_unselected=True)
+  # make normals consistent
   bpy.ops.mesh.normals_make_consistent(inside=False)
   bpy.ops.object.editmode_toggle()
+  decimate( 50000 );
   logProgress(2)
 
 def outputModel(filename):
@@ -101,6 +105,9 @@ def lapSmooth(factor, iterations=1):
   model.select=True
   logProgress(1)
 
+def scale(x, y, z):
+  bpy.ops.transform.resize(value=(x, y, z) )
+  bpy.ops.object.transform_apply(scale=True)
 
 def remesh( mode='SHARP', octree=8 ):
   bpy.ops.object.modifier_add(type='REMESH')
@@ -123,9 +130,25 @@ def decimate( verts ):
   model.modifiers[0].decimate_type = 'COLLAPSE'
   model.modifiers[0].ratio = ratio
   bpy.ops.object.modifier_apply(apply_as='DATA', modifier=model.modifiers[0].name)
+  # do it again to make sure we get the right number
+  ratio = verts/len(model.data.vertices)
+  if ratio>1:
+    ratio = 1
+  mod = bpy.ops.object.modifier_add(type='DECIMATE')
+  model.modifiers[0].decimate_type = 'COLLAPSE'
+  model.modifiers[0].ratio = ratio
+  bpy.ops.object.modifier_apply(apply_as='DATA', modifier=model.modifiers[0].name)
   print('%d output verts' % len(model.data.vertices))
   model.select=True
   logProgress(1)
+
+def repair():
+  model=bpy.data.objects[0]
+  bpy.ops.object.select_all(action='DESELECT')
+  bpy.context.scene.objects.active=model
+  numVerts = len(model.data.vertices)
+  remesh('SMOOTH', 10);
+  decimate( numVerts );
 
 def simpleDeform(mode, factor, pivotx, pivoty, pivotz):
   model=bpy.data.objects[0]
@@ -181,6 +204,7 @@ def surfaceSpawn(parent, child, scale, frequency):
   bpy.ops.object.select_all(action='SELECT')
   bpy.ops.object.duplicates_make_real()
   bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True)
+  logProgress(1)
   # clean up child
   bpy.ops.object.select_all(action='DESELECT')
   child.select=True
@@ -203,4 +227,5 @@ def surfaceSpawn(parent, child, scale, frequency):
 
   bpy.data.objects[0].select=True
   bpy.context.scene.objects.active=bpy.data.objects[0]
+  logProgress(1)
 

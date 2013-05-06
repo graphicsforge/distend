@@ -76,8 +76,6 @@ SimpleDeform.prototype.drawControls = function()
 }
 
 SimpleDeform.prototype.onapply = function() {
-  // clear out previous output
-  document.getElementById('console').innerHTML = 'SimpleDeforming...<br>';
   var mode = this.mode.childNodes[document.getElementById(this.mode.getAttribute('id')).selectedIndex].value;
   var factor = document.getElementById(this.factor.getAttribute('id')).value;
   factor = parseFloat(factor);

@@ -39,12 +39,34 @@ Remesh.prototype.drawControls = function()
 }
 
 Remesh.prototype.onapply = function() {
-  // clear out previous output
   var mode = this.mode.childNodes[document.getElementById(this.mode.getAttribute('id')).selectedIndex].value;
   var octree = document.getElementById(this.octree.getAttribute('id')).value;
   octree = parseInt(octree);
   socketIOManager.sendMessage('/modifier '+this.index+' remesh "'+mode+'" '+octree);
 }
 
+
+
+
+////////////////////////////////////////////////////////
+Repair.prototype = new Modifier;
+Repair.constructor = Repair;
+function Repair()
+{
+  this.uid = 'Modifier'+IdGenerator.getNext();  // get a unique identifier
+  this.name = 'Repair Model';
+  this.noOptions = true;
+}
+
+Repair.prototype.drawControls = function()
+{
+  var self = this;
+  var controls = document.createElement('div');
+  return controls;
+}
+
+Repair.prototype.onapply = function() {
+  socketIOManager.sendMessage('/modifier '+this.index+' repair');
+}
 
 
