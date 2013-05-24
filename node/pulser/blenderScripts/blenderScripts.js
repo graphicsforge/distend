@@ -66,7 +66,7 @@ module.exports = {
 var scriptWriter = fs.createWriteStream('debug.txt', {flags:'w'});
 streamScript( scriptWriter, script );
     if ( nick==undefined )
-      nick = 'anon';
+      nick = 'anon'+new Date().getTime();
     if ( slot==undefined )
       slot = 0;
     var scriptPipe = tmpPath+nick;

@@ -57,6 +57,7 @@ function handleUpload(req, res)
     });
   form.parse(req, function(err, fields, files) {
     // bail if we didn't get a file
+    // TODO don't do this
     if ( files.upload==undefined )
     {
       console.log('upload attempted without a file');
@@ -119,6 +120,8 @@ function handleUpload(req, res)
 function handleAPIUpload(req, res)
 {
   var form = new formidable.IncomingForm();
+  var fields = [];
+  var files = [];
 
   form.uploadDir = 'tmp';
 
@@ -128,36 +131,82 @@ function handleAPIUpload(req, res)
     });
   try { form.parse(req, function(err, fields, files) {
       // bail if we didn't get a file
-      if ( !files.file_0 )
+      var defaultFile = undefined;
+      var numFiles = 0;
+      for (file in files) {
+        if (!files.hasOwnProperty(file)) continue;
+        defaultFile = files[file];
+        numFiles++;
+      }
+      if ( !numFiles )
       {
         res.writeHead(200, {'content-type': 'text/html'});
-        res.end('error: no file_0');
+        res.end('error: no files');
         return;
       }
-      var outputFile = files.file_0.path+'_apioutput.stl';
+      var outputFile = 'changeme'+'_apioutput.stl';
+      // grab our actions
+      var modifiers = undefined;
       var operations = [];
-      // start off with our load modifier
-      operations.push( ['loadSTL', '"'+files.file_0.path+'"'] );
-      operations.push( ['outputModel', '"'+outputFile+'"'] );
+      if ( typeof(fields['modifiers'])=='string' )
+      {
+        modifiers = JSON.parse(fields.modifiers);
+        for ( var i=0; i<modifiers.length; i++ )
+        {
+          // point our file actions agains the relevant paths
+          // TODO downloading them as needed
+          // TODO create shell agnostic operation classs?
+          if ( modifiers[i][0].substring(0, 4)=='load')
+            modifiers[i][1] = '"'+files[modifiers[i][1]].path+'"';
+          if ( modifiers[i][0].substring(0, 6)=='output')
+            modifiers[i][1] = '"'+outputFile+'"';
+          operations.push(modifiers[i]);
+        }
+console.log(operations);
+      }
 
-      blenderScripts.apply(operations, fields['nick'], fields['slot'], function() {
-        fs.readFile(outputFile, function (err, file) {
-            res.writeHead(200, {
-                'content-type': 'application/octet-stream',
-                'content-disposition': 'attachment; filename=pulsed_'+files.file_0.name});
-            res.end(file);
-            fs.unlink(outputFile);
+      var extension = defaultFile.name.substring(defaultFile.name.lastIndexOf('.')+1);
+      if ( extension=='stl' )
+      {
+        // start off with our load modifier
+        operations.push( ['loadSTL', '"'+files[0].path+'"'] );
+        operations.push( ['outputModel', '"'+outputFile+'"'] );
+
+        blenderScripts.apply(operations, undefined, undefined, function() {
+          fs.readFile(outputFile, function (err, file) {
+              res.writeHead(200, {
+                  'content-type': 'application/octet-stream',
+                  'content-disposition': 'attachment; filename=pulsed_'+defaultFile.name});
+              res.end(file);
+              fs.unlink(outputFile);
+          });
+          for ( var name in files )
+            fs.unlink(files[name].path);
         });
-        for ( var name in files )
-          fs.unlink(files[name].path);
-      });
-
-    }); } catch (error) {
+      } // extension = stl
+      else // assume image?
+      {
+        res.writeHead(200, {
+            'content-type': 'application/octet-stream',
+            'content-disposition': 'attachment; filename=pulsed_'+defaultFile.name+'.svg'});
+        var potrace = spawn('./runPotrace.sh',[defaultFile.path,'0.5']);
+        potrace.stdout.on('data', function(data){
+          res.write(data);
+        });
+        potrace.stderr.on('data', function(data){
+          console.error(data.toString('utf8'));
+        });
+        potrace.on('exit', function(code, signal){
+          res.end();
+          for ( var name in files )
+            fs.unlink(files[name].path);
+        });
+      }
+  }); } catch (error) {
     res.writeHead(200, {'content-type': 'text/html'});
     res.end("error: "+error.toString());
   }
 }
-
 
 function startServer()
 {
