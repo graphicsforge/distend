@@ -26,19 +26,24 @@ streamScript = function( stream, operations )
       }
       stream.write(")\n");
     }
-    stream.end();
+    stream.end("bpy.ops.wm.quit_blender()");
   });
 }
 
-pushLoadSTLOperation = function( operations, nick, slot, inputfile )
+pushLoadOperation = function( operations, nick, slot, inputfile, type )
 {
   var basefile = '';
   if ( slot>0 )
     basefile = PATH+'/input/'+nick+'_'+(slot-1)+'.stl';
+
+  var loadOperation = 'loadSTL';
+  if ( typeof(type)=='string' && type.match(new RegExp('.svg$','i')) )
+    loadOperation = 'loadSVG';
+
   if ( inputfile!=undefined )
-    operations.push( ['loadSTL', "'"+inputfile+"'", "'"+basefile+"'"] );
+    operations.push( [loadOperation, "'"+inputfile+"'", "'"+basefile+"'"] );
   else
-    operations.push( ['loadSTL', "'"+basefile+"'"] );
+    operations.push( [loadOperation, "'"+basefile+"'"] );
 }
 
 pushExportOperations = function( operations, nick, slot )
@@ -52,7 +57,7 @@ pushExportOperations = function( operations, nick, slot )
 
 module.exports = {
   streamScript: streamScript,
-  pushLoadSTLOperation: pushLoadSTLOperation,
+  pushLoadOperation: pushLoadOperation,
   pushExportOperations: pushExportOperations,
   setBasePath: function( basePath ) {
     PATH = basePath;
@@ -76,6 +81,7 @@ streamScript( scriptWriter, script );
       // make sure we have a fifo for this
       var mkfifo = spawn('mkfifo',  [scriptPipe]);
       mkfifo.on('exit', function (code) {
+        // TODO TIME OUT BLENDERS THAT TAKE TOO LONG
         // set up blender call
         blender = spawn('./blender',['-b',scriptPath+'blank.blend', '-P',scriptPipe]);
         blender.stdout.on('data', function(data){

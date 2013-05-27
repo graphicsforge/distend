@@ -55,7 +55,7 @@ function startServer(httpServer)
       {
         var operations = [];
         // start off with our load modifier
-        blenderScripts.pushLoadSTLOperation(operations, webClient.nick, args[0]);
+        blenderScripts.pushLoadOperation(operations, webClient.nick, args[0]);
         operations.push( args.slice(1) );
         blenderScripts.pushExportOperations(operations, webClient.nick, args[0]);
 
@@ -64,8 +64,8 @@ function startServer(httpServer)
       else if ( type=="combine" )
       {
         var operations = [];
-        blenderScripts.pushLoadSTLOperation(operations, webClient.nick, parseInt(args[3])+1);
-        blenderScripts.pushLoadSTLOperation(operations, webClient.nick, parseInt(args[4])+1);
+        blenderScripts.pushLoadOperation(operations, webClient.nick, parseInt(args[3])+1);
+        blenderScripts.pushLoadOperation(operations, webClient.nick, parseInt(args[4])+1);
         var operation = args.slice(2);
         if ( args[3]<args[4] )
         {

@@ -17,7 +17,7 @@
     vec4 rotNorm = mvMatrix * vec4(aNorm, .0);
     float iUp = dot(vec4(aNorm, 0.), dirUp);
     float iCam = dot(vec4(aNorm, 0.), dirCam);
-    i = max( iUp, iCam*iCam*iCam*7. );
+    i = max( max( iUp, iCam*iCam*iCam*7. ), .25 );
   }
 </script> 
  

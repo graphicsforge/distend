@@ -6,6 +6,7 @@ var spawn = require ('child_process').spawn;
 var querystring = require('querystring');
 var httpProxy = require('node-http-proxy/lib/node-http-proxy'); // node-http-proxy https://github.com/nodejitsu/node-http-proxy.git 
 var formidable = require('formidable');
+var async = require('async');
 
 var blenderScripts = require('./blenderScripts/blenderScripts');
 
@@ -37,114 +38,71 @@ function sendAppPage(req, res, access_token)
 
 function handleUpload(req, res)
 {
-  var form = new formidable.IncomingForm(),
-      files = [],
-      fields = [];
-
-  form.uploadDir = 'tmp';
-
-  form
-    .on('field', function(field, value) {
-      console.log(field, value);
-      fields.push([field, value]);
-    })
-    .on('file', function(field, file) {
-      console.log(field, file);
-      files.push([field, file]);
-    })
-    .on('end', function() {
-      console.log('-> upload done');
-    });
-  form.parse(req, function(err, fields, files) {
-    // bail if we didn't get a file
-    // TODO don't do this
-    if ( files.upload==undefined )
-    {
-      console.log('upload attempted without a file');
-      return;
-    }
-    if ( fields['slot']==undefined )
-      fields['slot'] = 0;
-    // extract our extension
-    var extension = files.upload.name.substring(files.upload.name.lastIndexOf('.')+1);
-    if ( extension=='stl' )
-    {
-        var operations = [];
-        // start off with our load modifier
-        blenderScripts.pushLoadSTLOperation(operations, fields['nick'], 0, files.upload.path);
-        blenderScripts.pushExportOperations(operations, fields['nick'], fields['slot']);
-
-        res.writeHead(200, {'content-type': 'application/octet-stream'});
-        res.end('upload complete');
-        blenderScripts.apply(operations, fields['nick'], fields['slot'], function() {
-          fs.unlink(files.upload.path);
-        });
-    }
-    else if ( extension=='svg' )
-    {
-        res.writeHead(200, {'content-type': 'application/octet-stream'});
-        res.end('upload complete');
-        blenderScripts.apply('import_svg.py', {
-          chatServer: chatServer,
-          webPath:PATH,
-          nick:fields['nick'],
-          slot:fields['slot'],
-        },{
-          inputfile:files.upload.path
-        });
-    }
-    else if ( false )
-    {
-      fs.readFile(files.upload.path, function (err, file) {
-          res.writeHead(200, {'content-type': 'application/octet-stream'});
-          res.end('upload complete');
-          chatServer.write('upload complete, doing ffmpeg transcode', fields['nick']  )
-          var outputfile='output/'+files.upload.name.substring(0,files.upload.name.lastIndexOf('.')).replace(/[:#\?&@%+\'\"~]/g, "")+'.mp3';
-          ffmpeg = spawn('ffmpeg',['-y','-i',files.upload.path, '-acodec','libmp3lame',PATH+'/'+outputfile]);
-          ffmpeg.stdout.on('data', function(data){
-            chatServer.write(data.toString(), fields['nick']  )
-          });
-          ffmpeg.stderr.on('data', function(data){
-            chatServer.write(data.toString(), fields['nick']  )
-          });
-          ffmpeg.on('exit', function(code, signal){
-            chatServer.write('/outputurl '+outputfile, fields['nick']  )
-            // clean up the input file
-            fs.unlink(files.upload.path);
-          });
-      });
-    }
-  });
-}
-
-function handleAPIUpload(req, res)
-{
   var form = new formidable.IncomingForm();
-  var fields = [];
-  var files = [];
 
   form.uploadDir = 'tmp';
 
-  form
-    .on('end', function() {
-      console.log('-> upload done');
-    });
-  try { form.parse(req, function(err, fields, files) {
-      // bail if we didn't get a file
-      var defaultFile = undefined;
-      var numFiles = 0;
-      for (file in files) {
-        if (!files.hasOwnProperty(file)) continue;
-        defaultFile = files[file];
-        numFiles++;
+  form.parse(req, function(err, fields, files) { try {
+    // create our files object
+    var fileArray = [];
+    for (file in files) {
+      if (!files.hasOwnProperty(file)) continue;
+      fileArray.push({name:file,file:files[file]});
+    }
+    // TODO look through fields for file urls
+    // and add them to the array here
+    // define our pre-process function (conversion/download)
+    var filePreProcess = function(fileArrayElement, callback) {
+
+      if ( fileArrayElement.file!=undefined )
+      {
+        var file = fileArrayElement.file;
+        var extension = file.name.substring(file.name.lastIndexOf('.')+1).toString();
+        var acceptedExtensions = new RegExp('^stl$|^obj$|^svg$');
+        if ( extension.match(acceptedExtensions) )
+        {
+          callback(undefined, fileArrayElement);
+        }
+        else // assume image and convert to svg
+        {
+          var convertedFile = fs.createWriteStream(file.path+'_converted', {flags:'w'});
+          var blacklevel = 0.5;
+          if ( fields['image_blacklevel']!==undefined )
+            blacklevel = parseFloat(fields['image_blacklevel']);
+          var potrace = spawn('./runPotrace.sh',[file.path,blacklevel]);
+          potrace.stdout.on('data', function(data){
+            convertedFile.write(data);
+          });
+          potrace.stderr.on('data', function(data){
+            console.error(data.toString('utf8'));
+          });
+          potrace.on('exit', function(code, signal){
+            convertedFile.end();
+            fs.unlink(file.path);
+            fileArrayElement.file.path = file.path+'_converted';
+            fileArrayElement.file.name = file.name.substring(0,file.name.lastIndexOf('.'))+'.svg';
+            callback(undefined, fileArrayElement);
+          });
+        }
       }
-      if ( !numFiles )
+    }; // function filePreProcess
+
+    async.map(fileArray, filePreProcess, function(err, resultArray){
+      // bail if we didn't get a file
+      if ( !resultArray.length )
       {
         res.writeHead(200, {'content-type': 'text/html'});
         res.end('error: no files');
         return;
       }
-      var outputFile = 'changeme'+'_apioutput.stl';
+      // remember which file came first
+      var defaultFile = resultArray[0].file;
+      var outputFile = new Date().getTime()+'_apioutput.stl';
+      // re-create file object from converted fileArray
+      files = {};
+      for ( var i=0; i<resultArray.length; i++ )
+        files[resultArray[i].name] = resultArray[i].file;
+
       // grab our actions
       var modifiers = undefined;
       var operations = [];
@@ -154,23 +112,21 @@ function handleAPIUpload(req, res)
         for ( var i=0; i<modifiers.length; i++ )
         {
           // point our file actions agains the relevant paths
-          // TODO downloading them as needed
-          // TODO create shell agnostic operation classs?
           if ( modifiers[i][0].substring(0, 4)=='load')
-            modifiers[i][1] = '"'+files[modifiers[i][1]].path+'"';
+          {
+            if ( files[modifiers[i][1]]!=undefined )
+              modifiers[i][1] = '"'+files[modifiers[i][1]].path+'"';
+            else
+              throw "load operation referenced unknown file \""+modifiers[i][1]+"\"";
+          }
           if ( modifiers[i][0].substring(0, 6)=='output')
             modifiers[i][1] = '"'+outputFile+'"';
           operations.push(modifiers[i]);
         }
 console.log(operations);
-      }
-
-      var extension = defaultFile.name.substring(defaultFile.name.lastIndexOf('.')+1);
-      if ( extension=='stl' )
-      {
-        // start off with our load modifier
-        operations.push( ['loadSTL', '"'+files[0].path+'"'] );
-        operations.push( ['outputModel', '"'+outputFile+'"'] );
+        // TODO make operations look something like:
+        //operations.push( ['loadSTL', '"'+files[0].path+'"'] );
+        //operations.push( ['outputModel', '"'+outputFile+'"'] );
 
         blenderScripts.apply(operations, undefined, undefined, function() {
           fs.readFile(outputFile, function (err, file) {
@@ -179,33 +135,44 @@ console.log(operations);
                   'content-disposition': 'attachment; filename=pulsed_'+defaultFile.name});
               res.end(file);
               fs.unlink(outputFile);
+              // clean up after ourselves
+              for ( var name in files )
+                fs.unlink(files[name].path);
           });
-          for ( var name in files )
-            fs.unlink(files[name].path);
         });
-      } // extension = stl
-      else // assume image?
+      }
+      else if ( fields['nick']!==undefined && fields['slot']!==undefined )
       {
-        res.writeHead(200, {
-            'content-type': 'application/octet-stream',
-            'content-disposition': 'attachment; filename=pulsed_'+defaultFile.name+'.svg'});
-        var potrace = spawn('./runPotrace.sh',[defaultFile.path,'0.5']);
-        potrace.stdout.on('data', function(data){
-          res.write(data);
-        });
-        potrace.stderr.on('data', function(data){
-          console.error(data.toString('utf8'));
-        });
-        potrace.on('exit', function(code, signal){
-          res.end();
+        // this is a call from our main app
+        blenderScripts.pushLoadOperation(operations, fields['nick'], 0, defaultFile.path);
+        blenderScripts.pushExportOperations(operations, fields['nick'], fields['slot']);
+
+        res.writeHead(200, {'content-type': 'application/octet-stream'});
+        res.end('upload complete');
+        blenderScripts.apply(operations, fields['nick'], fields['slot'], function() {
           for ( var name in files )
             fs.unlink(files[name].path);
         });
       }
-  }); } catch (error) {
-    res.writeHead(200, {'content-type': 'text/html'});
-    res.end("error: "+error.toString());
-  }
+      else
+      {
+        // if not told to do anything, just give back the default file?
+        fs.readFile(defaultFile.path, function (err, file) {
+            res.writeHead(200, {
+                'content-type': 'application/octet-stream',
+                'content-disposition': 'attachment; filename=pulsed_'+defaultFile.name});
+            res.end(file);
+            // clean up after ourselves
+            for ( var name in files )
+              fs.unlink(files[name].path);
+        });
+      }
+
+    }); } catch (error) {
+      res.writeHead(200, {'content-type': 'text/html'});
+      res.end("error: "+error.toString());
+    } /* async map file pre-process */
+  });
 }
 
 function startServer()
@@ -230,7 +197,7 @@ function startServer()
       return;
     }
     if (req.url == '/api') {
-      handleAPIUpload(req, res);
+      handleUpload(req, res);
       return;
     }
     // otherwise see if this is a resource request
