@@ -1,1 +1,1 @@
-convert $1 pnm:- | ./potrace -s -k $2 -t 10
+convert $1 pnm:- | potrace -s -k $2 -t 10

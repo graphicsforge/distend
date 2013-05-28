@@ -4,7 +4,7 @@ var util = require('util');
 var fs = require('fs'); // File System
 var spawn = require ('child_process').spawn;
 var querystring = require('querystring');
-var httpProxy = require('node-http-proxy/lib/node-http-proxy'); // node-http-proxy https://github.com/nodejitsu/node-http-proxy.git 
+var httpProxy = require('http-proxy/lib/node-http-proxy'); // node-http-proxy https://github.com/nodejitsu/node-http-proxy.git 
 var formidable = require('formidable');
 var async = require('async');
 
